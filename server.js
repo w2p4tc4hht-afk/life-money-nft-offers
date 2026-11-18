@@ -212,7 +212,18 @@ app.post("/api/mtproto/personal-offer/create", requireSetupToken, async (req, re
     if (displayValue && (!Number.isFinite(Number(displayValue)) || Number(displayValue) <= 0)) {
       return res.status(400).json({ error: "Проверь оценочную стоимость." });
     }
+    const allowedDurations = [21600, 43200, 86400, 129600, 172800, 259200];
+    if (!allowedDurations.includes(duration)) return res.status(400).json({ error: "Выбери допустимый срок предложения." });
+    if (currency === "STARS" && (!Number.isSafeInteger(Number(price)) || Number(price) <= 0)) {
+      return res.status(400).json({ error: "Сумма Stars должна быть целым положительным числом." });
+    }
+    if (currency === "TON" && (!/^\\d+(\\.\\d{1,9})?$/.test(price) || Number(price) <= 0)) {
+      return res.status(400).json({ error: "Укажи положительную сумму TON максимум с 9 знаками после запятой." });
+    }
     const inspected = await inspectGift(link, ownerUsername);
+    if (currency === "STARS" && inspected.minStars != null && Number(price) < inspected.minStars) {
+      return res.status(400).json({ error: "Сумма ниже минимальной цены Telegram: " + inspected.minStars + " Stars." });
+    }
     const id = crypto.randomBytes(16).toString("hex");
     const base = String(process.env.RENDER_EXTERNAL_URL || "https://life-money-nft-offers.onrender.com").replace(/\/$/, "");
     const offer = {
