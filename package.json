@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "express": "^4.21.2",
-    "teleproto": "^1.233.0"
+    "teleproto": "^1.233.0",
+    "qrcode": "^1.5.4"
   }
 }
