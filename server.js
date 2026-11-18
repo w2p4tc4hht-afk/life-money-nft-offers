@@ -25,11 +25,12 @@ async function telegram(method, payload) {
 }
 
 async function sendOfferToChat(chatId, offer) {
-  const nl = String.fromCharCode(10);\n  const message = "🎁 LIFE MONEY NFT OFFER" + nl + nl + "Пользователь предлагает вам " +
-  const message = "🎁 LIFE MONEY NFT OFFER" + nl + nl + "Пользователь предлагает вам " +
-    offer.price + " " + offer.currency + " за " + offer.giftName + " " + offer.giftNumber + "." + nl + nl +
+  const nl = String.fromCharCode(10);
+  const message = "🎁 LIFE MONEY NFT OFFER" + nl + nl +
+    "Пользователь предлагает вам " + offer.price + " " + offer.currency +
+    " за " + offer.giftName + " " + offer.giftNumber + "." + nl + nl +
     "Предложение действует до " + new Date(offer.expiresAt).toLocaleString("ru-RU") +
-    nl + nl + "Это пользовательское предложение, не официальный заказ Telegram. Цена информационная; NFT и средства автоматически не передаются.";
+    nl + nl + "Это пользовательское предложение LIFE MONEY, не официальный заказ Telegram. Цена информационная; NFT и средства автоматически не передаются.";
   return telegram("sendMessage", {
     chat_id: chatId,
     text: message,
