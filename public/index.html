@@ -18,11 +18,12 @@
     input,select{width:100%;border:1px solid var(--line);background:#111019;color:white;padding:13px 14px;border-radius:12px;font:inherit;outline:none}
     input:focus,select:focus{border-color:var(--pink)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     button{width:100%;border:0;border-radius:13px;padding:14px;font:700 15px system-ui;cursor:pointer}
-    .primary{background:var(--pink);color:#231421;margin-top:18px}.accept{background:#e982bd;color:#251322}.decline{background:#302b39;color:#ddd;margin-top:9px}
-    .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin:10px 0}.price{font-size:25px;font-weight:800;margin:3px 0 14px}
-    .recipient{border-top:1px solid var(--line);padding-top:13px;color:#d6d0df;font-size:14px;line-height:1.5}
-    .hidden{display:none}.small{font-size:12px;color:var(--muted);line-height:1.5}
-    #result{margin-top:12px;color:#f5c8e2;font-size:14px;line-height:1.5}
+    .primary,.accept{background:var(--pink);color:#231421;margin-top:18px}.decline{background:#302b39;color:#ddd;margin-top:9px}
+    .secondary{background:#302b39;color:#fff;margin-top:10px}.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin:10px 0}
+    .price{font-size:25px;font-weight:800;margin:3px 0 14px}.recipient{border-top:1px solid var(--line);padding-top:13px;color:#d6d0df;font-size:14px;line-height:1.5}
+    .hidden{display:none}.small{font-size:12px;color:var(--muted);line-height:1.5}#result{margin-top:12px;color:#f5c8e2;font-size:14px;line-height:1.5}
+    .share{padding:12px;border:1px solid var(--line);border-radius:12px;overflow-wrap:anywhere;color:#f5c8e2;font-size:13px;margin-top:12px}
+    .status{font-size:13px;color:#f5c8e2;margin:10px 0}
   </style>
 </head>
 <body><main>
@@ -31,39 +32,78 @@
   <p class="sub">Создавай предложения по подаркам и отправляй друзьям персональную ссылку.</p>
   <div class="notice">Демо-режим: цена указана только для информации. Это не официальный заказ Telegram, не escrow и не автоматический перевод NFT или средств.</div>
   <section class="card" id="create">
-    <div class="gift">🎁</div>
-    <strong>Новое предложение</strong>
+    <div class="gift">🎁</div><strong>Новое предложение</strong>
     <label for="gift">Название подарка</label><input id="gift" placeholder="Например, Plush Pepe">
     <div class="grid"><div><label for="number">Номер NFT</label><input id="number" placeholder="#1234"></div><div><label for="price">Цена (инфо)</label><input id="price" type="number" min="0" step="any" placeholder="5"></div></div>
     <div class="grid"><div><label for="currency">Валюта</label><select id="currency"><option>TON</option><option>GRAM</option><option>⭐</option></select></div><div><label for="expiry">Срок действия</label><select id="expiry"><option value="60">1 час</option><option value="1440">24 часа</option><option value="10080">7 дней</option></select></div></div>
-    <button class="primary" id="make">Создать демо-предложение</button><div id="result"></div>
+    <button class="primary" id="make">Создать предложение</button><div id="result"></div>
   </section>
   <section class="card hidden" id="offer">
     <div class="meta"><span>ПРЕДЛОЖЕНИЕ · ДЕМО</span><span id="timer"></span></div>
     <div class="gift">🎁</div><h2 id="offerName">NFT Gift</h2><div class="meta"><span id="offerNumber"></span><span>Информационная цена</span></div>
     <div class="price" id="offerPrice"></div>
+    <div class="status" id="offerStatus"></div>
     <button class="accept" id="accept">Принять предложение</button><button class="decline" id="decline">Отказаться</button>
     <div class="recipient hidden" id="nextStep">Ты выбрал принять предложение. Получатель для самостоятельного перевода: <b>@koszakL</b>.<br>Никакой перевод не выполняется автоматически. Проверь получателя и отправляй подарок только вручную в Telegram, если действительно этого хочешь.</div>
+    <div class="share hidden" id="shareBox"></div>
+    <button class="secondary hidden" id="copyLink">Скопировать ссылку</button>
+    <button class="secondary hidden" id="shareNative">Поделиться ссылкой</button>
     <p class="small">Предложение создано пользователем, не является официальным заказом Telegram или гарантией сделки.</p>
   </section>
-  <p class="small">LIFE MONEY NFT Offers · MVP 1.0</p>
+  <p class="small">LIFE MONEY NFT Offers · MVP 1.1</p>
 </main>
 <script>
 const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
 const $ = id => document.getElementById(id);
+let currentOffer = null;
+let currentLink = location.href;
+function showOffer(data, isOwner=false) {
+  currentOffer=data;
+  $("offerName").textContent=data.giftName;
+  $("offerNumber").textContent=data.giftNumber||"";
+  $("offerPrice").textContent=data.price+" "+data.currency;
+  $("timer").textContent="До "+new Date(data.expiresAt).toLocaleString("ru-RU");
+  $("offerStatus").textContent=data.status==="active"?"Ожидает ответа":data.status==="accepted"?"Предложение принято":data.status==="declined"?"От предложения отказались":"Срок действия истёк";
+  $("create").classList.add("hidden");$("offer").classList.remove("hidden");
+  $("accept").classList.toggle("hidden", data.status!=="active");
+  $("decline").classList.toggle("hidden", data.status!=="active");
+  $("nextStep").classList.toggle("hidden", data.status!=="accepted");
+  $("shareBox").classList.toggle("hidden", !isOwner);
+  $("copyLink").classList.toggle("hidden", !isOwner);
+  $("shareNative").classList.toggle("hidden", !isOwner);
+  if(isOwner){$("shareBox").textContent="Персональная ссылка для друга: "+currentLink;}
+}
+async function loadOffer(id) {
+  const res=await fetch("/api/offers/"+encodeURIComponent(id));
+  const data=await res.json();
+  if(!res.ok) throw new Error(data.error||"Не удалось загрузить предложение");
+  showOffer(data,false);
+}
 $("make").onclick = async () => {
   const payload={giftName:$("gift").value.trim(),giftNumber:$("number").value.trim(),price:$("price").value,currency:$("currency").value,expiresInMinutes:$("expiry").value};
   if(!payload.giftName || !payload.price){$("result").textContent="Заполни название подарка и информационную цену.";return;}
   try{
     const res=await fetch("/api/offers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     const data=await res.json(); if(!res.ok) throw new Error(data.error||"Ошибка");
-    $("offerName").textContent=data.giftName;$("offerNumber").textContent=data.giftNumber||"";
-    $("offerPrice").textContent=data.price+" "+data.currency;
-    $("create").classList.add("hidden");$("offer").classList.remove("hidden");
-    $("result").textContent=""; history.replaceState(null,"","/?offer="+data.id);
+    currentLink=location.origin+"/?offer="+data.id;
+    history.replaceState(null,"", "/?offer="+data.id);
+    showOffer(data,true);
   }catch(e){$("result").textContent=e.message;}
 };
-$("accept").onclick=()=>{$("nextStep").classList.remove("hidden");$("accept").textContent="Выбрано: принять";};
-$("decline").onclick=()=>{ $("offer").classList.add("hidden");$("create").classList.remove("hidden");$("result").textContent="Ты отказался от предложения."; };
+async function decide(decision) {
+  if(!currentOffer)return;
+  try{
+    const res=await fetch("/api/offers/"+encodeURIComponent(currentOffer.id)+"/decision",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({decision})});
+    const data=await res.json();if(!res.ok)throw new Error(data.error||"Не удалось сохранить ответ");
+    showOffer(data,false);
+    if(decision==="accepted") $("nextStep").classList.remove("hidden");
+  }catch(e){$("offerStatus").textContent=e.message;}
+}
+$("accept").onclick=()=>decide("accepted");
+$("decline").onclick=()=>decide("declined");
+$("copyLink").onclick=async()=>{try{await navigator.clipboard.writeText(currentLink);$("copyLink").textContent="Ссылка скопирована";}catch(_){$("shareBox").textContent=currentLink;}};
+$("shareNative").onclick=async()=>{if(navigator.share){try{await navigator.share({title:"LIFE MONEY NFT Offer",text:"Посмотри моё предложение NFT",url:currentLink});}catch(_){}}else{$("shareBox").textContent=currentLink;}};
+const offerId=new URLSearchParams(location.search).get("offer");
+if(offerId){loadOffer(offerId).catch(e=>{$("result").textContent=e.message;});}
 </script></body></html>
