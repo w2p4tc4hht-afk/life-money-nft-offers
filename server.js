@@ -129,6 +129,37 @@ function expireIfNeeded(offer) {
 }
 
 
+
+const { createQrLogin, getQrStatus, submitTwoFactorPassword, cancelQrLogin } = require("./lib/mtproto-qr");
+
+function requireSetupToken(req, res, next) {
+  const expected = process.env.MTPROTO_SETUP_TOKEN || "";
+  const supplied = req.get("x-setup-token") || "";
+  const a = Buffer.from(supplied);
+  const b = Buffer.from(expected);
+  if (!expected || a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(401).json({ error: "Неверный ключ настройки. Проверь MTPROTO_SETUP_TOKEN в Render." });
+  }
+  next();
+}
+
+app.post("/api/mtproto/qr/start", requireSetupToken, async (_req, res) => {
+  try { res.json(await createQrLogin()); }
+  catch (error) { res.status(400).json({ error: error.message || "Не удалось создать QR-вход." }); }
+});
+app.get("/api/mtproto/qr/status", requireSetupToken, async (_req, res) => {
+  try { res.json(await getQrStatus()); }
+  catch (error) { res.status(503).json({ error: "Не удалось проверить статус сессии." }); }
+});
+app.post("/api/mtproto/qr/password", requireSetupToken, async (req, res) => {
+  try { res.json(await submitTwoFactorPassword(String(req.body?.password || ""))); }
+  catch (error) { res.status(400).json({ error: error.message || "Не удалось передать пароль Telegram." }); }
+});
+app.post("/api/mtproto/qr/cancel", requireSetupToken, async (_req, res) => {
+  try { res.json(await cancelQrLogin()); }
+  catch (error) { res.status(400).json({ error: "Не удалось отменить вход." }); }
+});
+
 app.get("/health", (_req, res) => {
   res.json({ ok: true, app: "LIFE MONEY NFT Offers", version: "1.1.0" });
 });
