@@ -26,6 +26,7 @@ async function telegram(method, payload) {
 
 async function sendOfferToChat(chatId, offer) {
   const nl = String.fromCharCode(10);\n  const message = "🎁 LIFE MONEY NFT OFFER" + nl + nl + "Пользователь предлагает вам " +
+  const message = "🎁 LIFE MONEY NFT OFFER" + nl + nl + "Пользователь предлагает вам " +
     offer.price + " " + offer.currency + " за " + offer.giftName + " " + offer.giftNumber + "." + nl + nl +
     "Предложение действует до " + new Date(offer.expiresAt).toLocaleString("ru-RU") +
     nl + nl + "Это пользовательское предложение, не официальный заказ Telegram. Цена информационная; NFT и средства автоматически не передаются.";
@@ -48,7 +49,7 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
   try {
     const update = req.body || {};
     if (update.message && typeof update.message.text === "string") {
-      const pieces = update.message.text.trim().split(/\\s+/);
+      const pieces = update.message.text.trim().split(" ");
       if (pieces[0] === "/start") {
         const chatId = update.message.chat.id;
         const id = (pieces[1] || "").split("_")[0];
@@ -73,6 +74,7 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
         offer.respondedAt = new Date().toISOString();
         await telegram("answerCallbackQuery", { callback_query_id: q.id, text: decision === "accept" ? "Предложение принято" : "Предложение отклонено" });
         const nl = String.fromCharCode(10);
+  const message = "🎁 LIFE MONEY NFT OFFER" + nl + nl + "Пользователь предлагает вам " +
         const suffix = decision === "accept"
           ? nl + nl + "Вы приняли пользовательское предложение. Это не перевод NFT: если хотите передать подарок, откройте его в Telegram и самостоятельно проверьте получателя @koszakL."
           : nl + nl + "Вы отклонили предложение.";
