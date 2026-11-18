@@ -166,7 +166,7 @@ const { inspectGift, sendGiftOffer } = require("./lib/gift-offers");
 app.post("/api/mtproto/gift/inspect", requireSetupToken, async (req, res) => {
   try {
     const gift = await inspectGift(String(req.body?.link || ""));
-    res.json({ ok: true, gift: { slug: gift.slug, title: gift.title, number: gift.number, minStars: gift.minStars, requirePremium: gift.requirePremium } });
+    res.json({ ok: true, gift: { slug: gift.slug, title: gift.title, number: gift.number, minStars: gift.minStars, currency: gift.currency, requirePremium: gift.requirePremium } });
   } catch (error) {
     res.status(400).json({ ok: false, error: error.message || "Не удалось проверить NFT." });
   }
@@ -177,7 +177,8 @@ app.post("/api/mtproto/gift/send-offer", requireSetupToken, async (req, res) => 
     if (req.body?.confirm !== true) return res.status(400).json({ error: "Требуется явное подтверждение отправки." });
     const result = await sendGiftOffer({
       link: String(req.body?.link || ""),
-      priceStars: req.body?.priceStars,
+      price: req.body?.price,
+      currency: req.body?.currency,
       duration: req.body?.duration
     });
     res.json({ ok: true, ...result });
