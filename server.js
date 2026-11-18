@@ -1,6 +1,7 @@
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
+const { checkSessionStore } = require("./lib/session-store");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -129,6 +130,15 @@ function expireIfNeeded(offer) {
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, app: "LIFE MONEY NFT Offers", version: "1.1.0" });
+});
+
+app.get("/health/session-store", async (_req, res) => {
+  try {
+    const status = await checkSessionStore();
+    res.json({ ok: true, service: "cloudflare-d1", ...status });
+  } catch (error) {
+    res.status(503).json({ ok: false, service: "cloudflare-d1", error: error.message });
+  }
 });
 
 app.get("/api/config", (_req, res) => {
