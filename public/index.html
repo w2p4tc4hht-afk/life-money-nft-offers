@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111018">
+  <title>LIFE MONEY · NFT Offers</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root{color-scheme:dark;--bg:#100f16;--panel:#1b1924;--line:#34303f;--pink:#f17bb8;--muted:#aaa5b6;--white:#fff}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 85% 0,#392039 0,transparent 35%),var(--bg);color:var(--white);font:16px system-ui,-apple-system,sans-serif}
+    main{max-width:520px;margin:auto;padding:28px 18px 44px}.brand{font-size:12px;letter-spacing:.2em;color:var(--pink);font-weight:800}
+    h1{font-size:28px;margin:8px 0 6px}.sub{color:var(--muted);margin:0 0 22px;line-height:1.5}
+    .notice{border:1px solid #74506b;background:#2a1b2b;padding:12px 14px;border-radius:14px;color:#f4c6e1;font-size:13px;line-height:1.45;margin-bottom:18px}
+    .card{background:linear-gradient(145deg,#24202e,#191722);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:16px}
+    .gift{height:150px;border-radius:16px;background:linear-gradient(135deg,#542d53,#201c31);display:grid;place-items:center;font-size:64px;margin-bottom:16px}
+    label{display:block;color:#d6d0df;font-size:13px;margin:13px 0 7px}
+    input,select{width:100%;border:1px solid var(--line);background:#111019;color:white;padding:13px 14px;border-radius:12px;font:inherit;outline:none}
+    input:focus,select:focus{border-color:var(--pink)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    button{width:100%;border:0;border-radius:13px;padding:14px;font:700 15px system-ui;cursor:pointer}
+    .primary{background:var(--pink);color:#231421;margin-top:18px}.accept{background:#e982bd;color:#251322}.decline{background:#302b39;color:#ddd;margin-top:9px}
+    .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px;margin:10px 0}.price{font-size:25px;font-weight:800;margin:3px 0 14px}
+    .recipient{border-top:1px solid var(--line);padding-top:13px;color:#d6d0df;font-size:14px;line-height:1.5}
+    .hidden{display:none}.small{font-size:12px;color:var(--muted);line-height:1.5}
+    #result{margin-top:12px;color:#f5c8e2;font-size:14px;line-height:1.5}
+  </style>
+</head>
+<body><main>
+  <div class="brand">LIFE MONEY</div>
+  <h1>NFT Offers</h1>
+  <p class="sub">Создавай предложения по подаркам и отправляй друзьям персональную ссылку.</p>
+  <div class="notice">Демо-режим: цена указана только для информации. Это не официальный заказ Telegram, не escrow и не автоматический перевод NFT или средств.</div>
+  <section class="card" id="create">
+    <div class="gift">🎁</div>
+    <strong>Новое предложение</strong>
+    <label for="gift">Название подарка</label><input id="gift" placeholder="Например, Plush Pepe">
+    <div class="grid"><div><label for="number">Номер NFT</label><input id="number" placeholder="#1234"></div><div><label for="price">Цена (инфо)</label><input id="price" type="number" min="0" step="any" placeholder="5"></div></div>
+    <div class="grid"><div><label for="currency">Валюта</label><select id="currency"><option>TON</option><option>GRAM</option><option>⭐</option></select></div><div><label for="expiry">Срок действия</label><select id="expiry"><option value="60">1 час</option><option value="1440">24 часа</option><option value="10080">7 дней</option></select></div></div>
+    <button class="primary" id="make">Создать демо-предложение</button><div id="result"></div>
+  </section>
+  <section class="card hidden" id="offer">
+    <div class="meta"><span>ПРЕДЛОЖЕНИЕ · ДЕМО</span><span id="timer"></span></div>
+    <div class="gift">🎁</div><h2 id="offerName">NFT Gift</h2><div class="meta"><span id="offerNumber"></span><span>Информационная цена</span></div>
+    <div class="price" id="offerPrice"></div>
+    <button class="accept" id="accept">Принять предложение</button><button class="decline" id="decline">Отказаться</button>
+    <div class="recipient hidden" id="nextStep">Ты выбрал принять предложение. Получатель для самостоятельного перевода: <b>@koszakL</b>.<br>Никакой перевод не выполняется автоматически. Проверь получателя и отправляй подарок только вручную в Telegram, если действительно этого хочешь.</div>
+    <p class="small">Предложение создано пользователем, не является официальным заказом Telegram или гарантией сделки.</p>
+  </section>
+  <p class="small">LIFE MONEY NFT Offers · MVP 1.0</p>
+</main>
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
+const $ = id => document.getElementById(id);
+$("make").onclick = async () => {
+  const payload={giftName:$("gift").value.trim(),giftNumber:$("number").value.trim(),price:$("price").value,currency:$("currency").value,expiresInMinutes:$("expiry").value};
+  if(!payload.giftName || !payload.price){$("result").textContent="Заполни название подарка и информационную цену.";return;}
+  try{
+    const res=await fetch("/api/offers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    const data=await res.json(); if(!res.ok) throw new Error(data.error||"Ошибка");
+    $("offerName").textContent=data.giftName;$("offerNumber").textContent=data.giftNumber||"";
+    $("offerPrice").textContent=data.price+" "+data.currency;
+    $("create").classList.add("hidden");$("offer").classList.remove("hidden");
+    $("result").textContent=""; history.replaceState(null,"","/?offer="+data.id);
+  }catch(e){$("result").textContent=e.message;}
+};
+$("accept").onclick=()=>{$("nextStep").classList.remove("hidden");$("accept").textContent="Выбрано: принять";};
+$("decline").onclick=()=>{ $("offer").classList.add("hidden");$("create").classList.remove("hidden");$("result").textContent="Ты отказался от предложения."; };
+</script></body></html>
