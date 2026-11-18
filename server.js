@@ -129,50 +129,6 @@ function expireIfNeeded(offer) {
 }
 
 
-const { createLoginFlow, getLoginStatus } = require("./lib/mtproto-auth");
-
-function requireSetupToken(req, res, next) {
-  const expected = process.env.MTPROTO_SETUP_TOKEN;
-  const supplied = req.get("x-setup-token") || "";
-  if (!expected || supplied.length !== expected.length ||
-      !crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) {
-    return res.status(401).json({ error: "Неверный ключ доступа к настройке." });
-  }
-  next();
-}
-
-app.get("/api/mtproto/status", requireSetupToken, async (_req, res) => {
-  try {
-    res.json(await getLoginStatus());
-  } catch (error) {
-    res.status(503).json({ error: "Не удалось проверить сессию." });
-  }
-});
-
-app.post("/api/mtproto/send-code", requireSetupToken, async (req, res) => {
-  try {
-    const phone = String(req.body?.phone || "").trim();
-    if (!/^\\+[1-9][0-9]{7,14}$/.test(phone)) {
-      return res.status(400).json({ error: "Укажи номер в международном формате, например +48..." });
-    }
-    const status = await createLoginFlow(phone);
-    res.json(status);
-  } catch (error) {
-    res.status(400).json({ error: error.message || "Не удалось запросить код." });
-  }
-});
-
-app.post("/api/mtproto/verify", requireSetupToken, async (req, res) => {
-  try {
-    const value = String(req.body?.value || "").trim();
-    if (!value || value.length > 256) return res.status(400).json({ error: "Введи код или пароль." });
-    const status = await require("./lib/mtproto-auth").submitLoginValue(value);
-    res.json(status);
-  } catch (error) {
-    res.status(400).json({ error: error.message || "Проверка не удалась." });
-  }
-});
-
 app.get("/health", (_req, res) => {
   res.json({ ok: true, app: "LIFE MONEY NFT Offers", version: "1.1.0" });
 });
