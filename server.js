@@ -14,6 +14,8 @@ function publicOffer(offer) {
     id: offer.id,
     giftName: offer.giftName,
     giftNumber: offer.giftNumber,
+    giftUrl: offer.giftUrl,
+    giftSlug: offer.giftSlug,
     price: offer.price,
     currency: offer.currency,
     createdAt: offer.createdAt,
@@ -43,11 +45,26 @@ app.get("/api/config", (_req, res) => {
 });
 
 app.post("/api/offers", (req, res) => {
-  const { giftName, giftNumber, price, currency, expiresInMinutes } = req.body || {};
+  const { giftName, giftNumber, giftUrl, price, currency, expiresInMinutes } = req.body || {};
   const numericPrice = Number(price);
-  if (!String(giftName || "").trim() || !Number.isFinite(numericPrice) || numericPrice <= 0 ||
+  let parsedGiftUrl;
+  try {
+    parsedGiftUrl = new URL(String(giftUrl || ""));
+  } catch (_) {
+    return res.status(400).json({ error: "Вставь действительную ссылку Telegram на NFT: https://t.me/nft/Название-номер" });
+  }
+  if (!["t.me", "telegram.me"].includes(parsedGiftUrl.hostname.toLowerCase()) ||
+      !/^\/nft\/[A-Za-z0-9_]+-[0-9]+\/?$/.test(parsedGiftUrl.pathname) ||
+      parsedGiftUrl.search || parsedGiftUrl.hash) {
+    return res.status(400).json({ error: "Подходит только ссылка на коллекционный подарок вида https://t.me/nft/Название-номер" });
+  }
+  const giftSlug = parsedGiftUrl.pathname.split("/")[2];
+  const splitAt = giftSlug.lastIndexOf("-");
+  const parsedName = giftSlug.slice(0, splitAt);
+  const parsedNumber = giftSlug.slice(splitAt + 1);
+  if (!Number.isFinite(numericPrice) || numericPrice <= 0 ||
       !["TON", "GRAM", "⭐"].includes(currency)) {
-    return res.status(400).json({ error: "Укажи название подарка, положительную цену и валюту TON, GRAM или ⭐." });
+    return res.status(400).json({ error: "Укажи положительную информационную цену и валюту TON, GRAM или ⭐." });
   }
 
   const id = crypto.randomBytes(8).toString("hex");
@@ -55,8 +72,10 @@ app.post("/api/offers", (req, res) => {
   const minutes = Math.min(Math.max(Number(expiresInMinutes) || 60, 1), 10080);
   const offer = {
     id,
-    giftName: String(giftName).trim().slice(0, 80),
-    giftNumber: String(giftNumber || "").trim().slice(0, 30),
+    giftName: String(giftName || parsedName).trim().slice(0, 80),
+    giftNumber: String(giftNumber || ("#" + parsedNumber)).trim().slice(0, 30),
+    giftUrl: parsedGiftUrl.origin + parsedGiftUrl.pathname, 
+    giftSlug,
     price: String(price).slice(0, 20),
     currency,
     createdAt: createdAt.toISOString(),
