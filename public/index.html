@@ -33,7 +33,7 @@
   <div class="notice">Демо-режим: цена указана только для информации. Это не официальный заказ Telegram, не escrow и не автоматический перевод NFT или средств.</div>
   <section class="card" id="create">
     <div class="gift">🎁</div><strong>Новое предложение</strong>
-    <label for="gift">Название подарка</label><input id="gift" placeholder="Например, Plush Pepe">
+    <label for="giftUrl">Ссылка на конкретный NFT в Telegram</label><input id="giftUrl" type="url" placeholder="https://t.me/nft/ViceCream-98319" required><label for="gift">Название подарка (заполнится автоматически)</label><input id="gift" placeholder="Например, ViceCream">
     <div class="grid"><div><label for="number">Номер NFT</label><input id="number" placeholder="#1234"></div><div><label for="price">Цена (инфо)</label><input id="price" type="number" min="0" step="any" placeholder="5"></div></div>
     <div class="grid"><div><label for="currency">Валюта</label><select id="currency"><option>TON</option><option>GRAM</option><option>⭐</option></select></div><div><label for="expiry">Срок действия</label><select id="expiry"><option value="60">1 час</option><option value="1440">24 часа</option><option value="10080">7 дней</option></select></div></div>
     <button class="primary" id="make">Создать предложение</button><div id="result"></div>
@@ -42,9 +42,9 @@
     <div class="meta"><span>ПРЕДЛОЖЕНИЕ · ДЕМО</span><span id="timer"></span></div>
     <div class="gift">🎁</div><h2 id="offerName">NFT Gift</h2><div class="meta"><span id="offerNumber"></span><span>Информационная цена</span></div>
     <div class="price" id="offerPrice"></div>
-    <div class="status" id="offerStatus"></div>
+    <div class="status" id="offerStatus"></div><div class="share" id="giftLinkBox"></div>
     <button class="accept" id="accept">Принять предложение</button><button class="decline" id="decline">Отказаться</button>
-    <div class="recipient hidden" id="nextStep">Ты выбрал принять предложение. Получатель для самостоятельного перевода: <b>@koszakL</b>.<br>Никакой перевод не выполняется автоматически. Проверь получателя и отправляй подарок только вручную в Telegram, если действительно этого хочешь.</div>
+    <div class="recipient hidden" id="nextStep">Ты принял предложение. Это не перевод и не официальное предложение Telegram. Чтобы продолжить, открой указанный подарок в Telegram, проверь его название и номер, затем самостоятельно используй доступную в Telegram функцию передачи и выбери получателя <b>@koszakL</b>. Не передавай подарок, если не согласен с условиями. <div class="grid"><button class="secondary" id="openGift" type="button">Открыть этот NFT</button><button class="secondary" id="openRecipient" type="button">Открыть @koszakL</button></div></div>
     <div class="share hidden" id="shareBox"></div>
     <button class="secondary hidden" id="copyLink">Скопировать ссылку</button>
     <button class="secondary hidden" id="shareNative">Поделиться ссылкой</button>
@@ -60,6 +60,7 @@ let currentOffer = null;
 let currentLink = location.href;
 function showOffer(data, isOwner=false) {
   currentOffer=data;
+  $("giftLinkBox").innerHTML="NFT: <a id=\"giftLink\" href=\""+encodeURI(data.giftUrl||"#")+"\" target=\"_blank\" rel=\"noopener\">"+(data.giftUrl||"Ссылка не указана")+"</a>";
   $("offerName").textContent=data.giftName;
   $("offerNumber").textContent=data.giftNumber||"";
   $("offerPrice").textContent=data.price+" "+data.currency;
@@ -101,9 +102,12 @@ async function decide(decision) {
   }catch(e){$("offerStatus").textContent=e.message;}
 }
 $("accept").onclick=()=>decide("accepted");
+$("openGift").onclick=()=>{if(currentOffer?.giftUrl)window.open(currentOffer.giftUrl,"_blank","noopener");};
+$("openRecipient").onclick=()=>window.open("https://t.me/koszakL","_blank","noopener");
 $("decline").onclick=()=>decide("declined");
 $("copyLink").onclick=async()=>{try{await navigator.clipboard.writeText(currentLink);$("copyLink").textContent="Ссылка скопирована";}catch(_){$("shareBox").textContent=currentLink;}};
 $("shareNative").onclick=async()=>{if(navigator.share){try{await navigator.share({title:"LIFE MONEY NFT Offer",text:"Посмотри моё предложение NFT",url:currentLink});}catch(_){}}else{$("shareBox").textContent=currentLink;}};
+$("#giftUrl").addEventListener("input",()=>{try{const u=new URL($("#giftUrl").value.trim());const m=u.pathname.match(/^\/nft\/([A-Za-z0-9_]+)-([0-9]+)\/?$/);if(["t.me","telegram.me"].includes(u.hostname)&&m){$("#gift").value=m[1];$("#number").value="#"+m[2];}}catch(_){}});
 const offerId=new URLSearchParams(location.search).get("offer");
 if(offerId){loadOffer(offerId).catch(e=>{$("result").textContent=e.message;});}
 </script></body></html>
