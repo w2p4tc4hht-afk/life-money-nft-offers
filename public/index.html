@@ -82,8 +82,8 @@ async function loadOffer(id) {
   showOffer(data,false);
 }
 $("make").onclick = async () => {
-  const payload={giftName:$("gift").value.trim(),giftNumber:$("number").value.trim(),price:$("price").value,currency:$("currency").value,expiresInMinutes:$("expiry").value};
-  if(!payload.giftName || !payload.price){$("result").textContent="Заполни название подарка и информационную цену.";return;}
+  const payload={giftUrl:$("giftUrl").value.trim(),giftName:$("gift").value.trim(),giftNumber:$("number").value.trim(),price:$("price").value,currency:$("currency").value,expiresInMinutes:$("expiry").value};
+  if(!payload.giftUrl || !payload.price){$("result").textContent="Вставь ссылку на NFT и укажи информационную цену.";return;}
   try{
     const res=await fetch("/api/offers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     const data=await res.json(); if(!res.ok) throw new Error(data.error||"Ошибка");
