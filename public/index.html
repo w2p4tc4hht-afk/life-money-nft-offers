@@ -24,6 +24,15 @@
     .hidden{display:none}.small{font-size:12px;color:var(--muted);line-height:1.5}#result{margin-top:12px;color:#f5c8e2;font-size:14px;line-height:1.5}
     .share{padding:12px;border:1px solid var(--line);border-radius:12px;overflow-wrap:anywhere;color:#f5c8e2;font-size:13px;margin-top:12px}
     .status{font-size:13px;color:#f5c8e2;margin:10px 0}
+    .telegram-offer{background:linear-gradient(145deg,#292929,#1c1c1c);border:1px solid #454545;border-radius:18px;padding:18px 16px;text-align:center;margin:14px 0;color:#f7f7f7}
+    .telegram-offer .gift{width:116px;height:116px;margin:0 auto 18px;border-radius:22px;font-size:54px}
+    .telegram-offer .offer-copy{font-size:19px;line-height:1.4;font-weight:600;margin:12px 0 18px}
+    .telegram-offer .expires{font-size:16px;color:#ddd;margin:16px 0 8px}
+    .telegram-offer .demo-stamp{font-size:10px;letter-spacing:.12em;color:#f2a7d1;border:1px solid #87516f;border-radius:20px;padding:5px 9px;display:inline-block}
+    .offer-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .offer-actions button{margin:0;border-radius:12px;background:#292929;color:white;border:1px solid #494949}
+    .offer-actions .accept{background:#303030;color:white;border-color:#555}
+    .telegram-share{background:#2588d9;color:white;margin-top:12px}
   </style>
 </head>
 <body><main>
@@ -39,15 +48,19 @@
     <button class="primary" id="make">Создать предложение</button><div id="result"></div>
   </section>
   <section class="card hidden" id="offer">
-    <div class="meta"><span>ПРЕДЛОЖЕНИЕ · ДЕМО</span><span id="timer"></span></div>
-    <div class="gift">🎁</div><h2 id="offerName">NFT Gift</h2><div class="meta"><span id="offerNumber"></span><span>Информационная цена</span></div>
-    <div class="price" id="offerPrice"></div>
-    <div class="status" id="offerStatus"></div><div class="share" id="giftLinkBox"></div>
-    <button class="accept" id="accept">Принять предложение</button><button class="decline" id="decline">Отказаться</button>
+    <div class="telegram-offer">
+      <span class="demo-stamp">LIFE MONEY · НЕ ОФИЦИАЛЬНОЕ ПРЕДЛОЖЕНИЕ TELEGRAM</span>
+      <div class="gift">🎁</div>
+      <div class="offer-copy">Пользователь предлагает вам <b id="offerPrice">5 ⭐</b> за <b id="offerName">NFT Gift</b> <span id="offerNumber">#123</span>.</div>
+      <div class="expires">Предложение действует ещё <b id="timer"></b></div>
+      <div class="status" id="offerStatus">Ожидает ответа</div>
+      <div class="offer-actions"><button class="decline" id="decline">✕ Отклонить</button><button class="accept" id="accept">✓ Принять</button></div>
+    </div>
+    <div class="share" id="giftLinkBox"></div>
     <div class="recipient hidden" id="nextStep">Ты принял предложение. Это не перевод и не официальное предложение Telegram. Чтобы продолжить, открой указанный подарок в Telegram, проверь его название и номер, затем самостоятельно используй доступную в Telegram функцию передачи и выбери получателя <b>@koszakL</b>. Не передавай подарок, если не согласен с условиями. <div class="grid"><button class="secondary" id="openGift" type="button">Открыть этот NFT</button><button class="secondary" id="openRecipient" type="button">Открыть @koszakL</button></div></div>
     <div class="share hidden" id="shareBox"></div>
     <button class="secondary hidden" id="copyLink">Скопировать ссылку</button>
-    <button class="secondary hidden" id="shareNative">Поделиться ссылкой</button>
+    <button class="secondary hidden" id="shareNative">Поделиться ссылкой</button><button class="telegram-share hidden" id="sendTelegram">Отправить другу в Telegram</button>
     <p class="small">Предложение создано пользователем, не является официальным заказом Telegram или гарантией сделки.</p>
   </section>
   <p class="small">LIFE MONEY NFT Offers · MVP 1.1</p>
@@ -58,13 +71,14 @@ tg?.ready(); tg?.expand();
 const $ = id => document.getElementById(id);
 let currentOffer = null;
 let currentLink = location.href;
+function remainingTime(expiresAt){const ms=Math.max(0,Date.parse(expiresAt)-Date.now());const total=Math.floor(ms/60000),days=Math.floor(total/1440),hours=Math.floor((total%1440)/60),mins=total%60;return (days?days+" д. ":"")+(hours?hours+" ч. ":"")+mins+" мин.";}
 function showOffer(data, isOwner=false) {
   currentOffer=data;
   $("giftLinkBox").innerHTML="NFT: <a id=\"giftLink\" href=\""+encodeURI(data.giftUrl||"#")+"\" target=\"_blank\" rel=\"noopener\">"+(data.giftUrl||"Ссылка не указана")+"</a>";
   $("offerName").textContent=data.giftName;
   $("offerNumber").textContent=data.giftNumber||"";
   $("offerPrice").textContent=data.price+" "+data.currency;
-  $("timer").textContent="До "+new Date(data.expiresAt).toLocaleString("ru-RU");
+  $("timer").textContent=remainingTime(data.expiresAt);
   $("offerStatus").textContent=data.status==="active"?"Ожидает ответа":data.status==="accepted"?"Предложение принято":data.status==="declined"?"От предложения отказались":"Срок действия истёк";
   $("create").classList.add("hidden");$("offer").classList.remove("hidden");
   $("accept").classList.toggle("hidden", data.status!=="active");
@@ -73,6 +87,7 @@ function showOffer(data, isOwner=false) {
   $("shareBox").classList.toggle("hidden", !isOwner);
   $("copyLink").classList.toggle("hidden", !isOwner);
   $("shareNative").classList.toggle("hidden", !isOwner);
+  $("sendTelegram").classList.toggle("hidden", !isOwner);
   if(isOwner){$("shareBox").textContent="Персональная ссылка для друга: "+currentLink;}
 }
 async function loadOffer(id) {
@@ -108,6 +123,7 @@ $("openGift").onclick=()=>{if(currentOffer?.giftUrl)window.open(currentOffer.gif
 $("openRecipient").onclick=()=>window.open("https://t.me/koszakL","_blank","noopener");
 $("decline").onclick=()=>decide("declined");
 $("copyLink").onclick=async()=>{try{await navigator.clipboard.writeText(currentLink);$("copyLink").textContent="Ссылка скопирована";}catch(_){$("shareBox").textContent=currentLink;}};
+$("sendTelegram").onclick=()=>{const txt="Посмотри предложение на NFT "+currentOffer.giftName+" "+currentOffer.giftNumber+". Это пользовательское предложение LIFE MONEY.";window.open("https://t.me/share/url?url="+encodeURIComponent(currentLink)+"&text="+encodeURIComponent(txt),"_blank","noopener");};
 $("shareNative").onclick=async()=>{if(navigator.share){try{await navigator.share({title:"LIFE MONEY NFT Offer",text:"Посмотри моё предложение NFT",url:currentLink});}catch(_){}}else{$("shareBox").textContent=currentLink;}};
 $("giftUrl").addEventListener("input",()=>{try{const u=new URL($("giftUrl").value.trim());const m=u.pathname.match(/^\/nft\/([A-Za-z0-9_]+)-([0-9]+)\/?$/);if(["t.me","telegram.me"].includes(u.hostname)&&m){$("gift").value=m[1];$("number").value="#"+m[2];}}catch(_){}});
 const offerId=new URLSearchParams(location.search).get("offer");
