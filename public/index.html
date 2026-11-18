@@ -104,10 +104,12 @@ async function decide(decision) {
 $("accept").onclick=()=>decide("accepted");
 $("openGift").onclick=()=>{if(currentOffer?.giftUrl)window.open(currentOffer.giftUrl,"_blank","noopener");};
 $("openRecipient").onclick=()=>window.open("https://t.me/koszakL","_blank","noopener");
+$("openGift").onclick=()=>{if(currentOffer?.giftUrl)window.open(currentOffer.giftUrl,"_blank","noopener");};
+$("openRecipient").onclick=()=>window.open("https://t.me/koszakL","_blank","noopener");
 $("decline").onclick=()=>decide("declined");
 $("copyLink").onclick=async()=>{try{await navigator.clipboard.writeText(currentLink);$("copyLink").textContent="Ссылка скопирована";}catch(_){$("shareBox").textContent=currentLink;}};
 $("shareNative").onclick=async()=>{if(navigator.share){try{await navigator.share({title:"LIFE MONEY NFT Offer",text:"Посмотри моё предложение NFT",url:currentLink});}catch(_){}}else{$("shareBox").textContent=currentLink;}};
-$("#giftUrl").addEventListener("input",()=>{try{const u=new URL($("#giftUrl").value.trim());const m=u.pathname.match(/^\/nft\/([A-Za-z0-9_]+)-([0-9]+)\/?$/);if(["t.me","telegram.me"].includes(u.hostname)&&m){$("#gift").value=m[1];$("#number").value="#"+m[2];}}catch(_){}});
+$("giftUrl").addEventListener("input",()=>{try{const u=new URL($("giftUrl").value.trim());const m=u.pathname.match(/^\/nft\/([A-Za-z0-9_]+)-([0-9]+)\/?$/);if(["t.me","telegram.me"].includes(u.hostname)&&m){$("gift").value=m[1];$("number").value="#"+m[2];}}catch(_){}});
 const offerId=new URLSearchParams(location.search).get("offer");
 if(offerId){loadOffer(offerId).catch(e=>{$("result").textContent=e.message;});}
 </script></body></html>
