@@ -25,10 +25,10 @@ async function telegram(method, payload) {
 }
 
 async function sendOfferToChat(chatId, offer) {
-  const message = "🎁 LIFE MONEY NFT OFFER\\n\\nПользователь предлагает вам " +
-    offer.price + " " + offer.currency + " за " + offer.giftName + " " + offer.giftNumber + ".\\n\\n" +
+  const nl = String.fromCharCode(10);\n  const message = "🎁 LIFE MONEY NFT OFFER" + nl + nl + "Пользователь предлагает вам " +
+    offer.price + " " + offer.currency + " за " + offer.giftName + " " + offer.giftNumber + "." + nl + nl +
     "Предложение действует до " + new Date(offer.expiresAt).toLocaleString("ru-RU") +
-    "\\n\\nЭто пользовательское предложение, не официальный заказ Telegram. Цена информационная; NFT и средства автоматически не передаются.";
+    nl + nl + "Это пользовательское предложение, не официальный заказ Telegram. Цена информационная; NFT и средства автоматически не передаются.";
   return telegram("sendMessage", {
     chat_id: chatId,
     text: message,
@@ -48,11 +48,12 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
   try {
     const update = req.body || {};
     if (update.message && typeof update.message.text === "string") {
-      const match = update.message.text.match(/^\\/start(?:\\s+([a-f0-9]{16}))?/);
-      if (match) {
+      const pieces = update.message.text.trim().split(/\\s+/);
+      if (pieces[0] === "/start") {
         const chatId = update.message.chat.id;
-        if (match[1]) {
-          const offer = expireIfNeeded(offers.get(match[1]));
+        const id = (pieces[1] || "").split("_")[0];
+        if (id) {
+          const offer = expireIfNeeded(offers.get(id));
           if (offer && offer.status === "active") await sendOfferToChat(chatId, offer);
           else await telegram("sendMessage", { chat_id: chatId, text: "Предложение не найдено или срок его действия истёк." });
         } else {
@@ -71,9 +72,10 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
         offer.status = decision === "accept" ? "accepted" : "declined";
         offer.respondedAt = new Date().toISOString();
         await telegram("answerCallbackQuery", { callback_query_id: q.id, text: decision === "accept" ? "Предложение принято" : "Предложение отклонено" });
+        const nl = String.fromCharCode(10);
         const suffix = decision === "accept"
-          ? "\\n\\nВы приняли пользовательское предложение. Это не перевод NFT: если хотите передать подарок, откройте его в Telegram и самостоятельно проверьте получателя @koszakL."
-          : "\\n\\nВы отклонили предложение.";
+          ? nl + nl + "Вы приняли пользовательское предложение. Это не перевод NFT: если хотите передать подарок, откройте его в Telegram и самостоятельно проверьте получателя @koszakL."
+          : nl + nl + "Вы отклонили предложение.";
         await telegram("editMessageText", {
           chat_id: q.message.chat.id,
           message_id: q.message.message_id,
@@ -90,7 +92,7 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
 async function configureTelegramWebhook() {
   if (!BOT_TOKEN || !process.env.RENDER_EXTERNAL_URL) return;
   try {
-    const url = process.env.RENDER_EXTERNAL_URL.replace(/\\/$/, "") + "/telegram/webhook/" + WEBHOOK_SECRET;
+    const base = process.env.RENDER_EXTERNAL_URL.endsWith("/") ? process.env.RENDER_EXTERNAL_URL.slice(0, -1) : process.env.RENDER_EXTERNAL_URL;\n    const url = base + "/telegram/webhook/" + WEBHOOK_SECRET;
     await telegram("setWebhook", { url, secret_token: WEBHOOK_SECRET, allowed_updates: ["message", "callback_query"] });
     console.log("Telegram webhook configured");
   } catch (error) {
