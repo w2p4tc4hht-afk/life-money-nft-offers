@@ -7,6 +7,96 @@ const PORT = process.env.PORT || 3000;
 const offers = new Map();
 
 app.use(express.json({ limit: "100kb" }));
+
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const BOT_USERNAME = (process.env.BOT_USERNAME || "koszak_bot_ai").replace(/^@/, "");
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || crypto.randomBytes(24).toString("hex");
+
+async function telegram(method, payload) {
+  if (!BOT_TOKEN) throw new Error("BOT_TOKEN is not configured");
+  const response = await fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/" + method, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json();
+  if (!data.ok) throw new Error(data.description || "Telegram API error");
+  return data.result;
+}
+
+async function sendOfferToChat(chatId, offer) {
+  const message = "🎁 LIFE MONEY NFT OFFER\\n\\nПользователь предлагает вам " +
+    offer.price + " " + offer.currency + " за " + offer.giftName + " " + offer.giftNumber + ".\\n\\n" +
+    "Предложение действует до " + new Date(offer.expiresAt).toLocaleString("ru-RU") +
+    "\\n\\nЭто пользовательское предложение, не официальный заказ Telegram. Цена информационная; NFT и средства автоматически не передаются.";
+  return telegram("sendMessage", {
+    chat_id: chatId,
+    text: message,
+    reply_markup: {
+      inline_keyboard: [[
+        { text: "✕ Отклонить", callback_data: "decline:" + offer.id },
+        { text: "✓ Принять", callback_data: "accept:" + offer.id }
+      ], [
+        { text: "Открыть NFT", url: offer.giftUrl }
+      ]]
+    }
+  });
+}
+
+app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const update = req.body || {};
+    if (update.message && typeof update.message.text === "string") {
+      const match = update.message.text.match(/^\\/start(?:\\s+([a-f0-9]{16}))?/);
+      if (match) {
+        const chatId = update.message.chat.id;
+        if (match[1]) {
+          const offer = expireIfNeeded(offers.get(match[1]));
+          if (offer && offer.status === "active") await sendOfferToChat(chatId, offer);
+          else await telegram("sendMessage", { chat_id: chatId, text: "Предложение не найдено или срок его действия истёк." });
+        } else {
+          await telegram("sendMessage", { chat_id: chatId, text: "Привет! Я LIFE MONEY NFT Offers. Открой ссылку предложения, чтобы посмотреть подарок и ответить." });
+        }
+      }
+    }
+    if (update.callback_query) {
+      const q = update.callback_query;
+      const parts = String(q.data || "").split(":");
+      const decision = parts[0], id = parts[1];
+      const offer = expireIfNeeded(offers.get(id));
+      if (!offer || offer.status !== "active" || !["accept", "decline"].includes(decision)) {
+        await telegram("answerCallbackQuery", { callback_query_id: q.id, text: "Предложение уже недоступно." });
+      } else {
+        offer.status = decision === "accept" ? "accepted" : "declined";
+        offer.respondedAt = new Date().toISOString();
+        await telegram("answerCallbackQuery", { callback_query_id: q.id, text: decision === "accept" ? "Предложение принято" : "Предложение отклонено" });
+        const suffix = decision === "accept"
+          ? "\\n\\nВы приняли пользовательское предложение. Это не перевод NFT: если хотите передать подарок, откройте его в Telegram и самостоятельно проверьте получателя @koszakL."
+          : "\\n\\nВы отклонили предложение.";
+        await telegram("editMessageText", {
+          chat_id: q.message.chat.id,
+          message_id: q.message.message_id,
+          text: q.message.text + suffix,
+          reply_markup: { inline_keyboard: [[{ text: "Открыть NFT", url: offer.giftUrl }]] }
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Telegram webhook error:", error.message);
+  }
+});
+
+async function configureTelegramWebhook() {
+  if (!BOT_TOKEN || !process.env.RENDER_EXTERNAL_URL) return;
+  try {
+    const url = process.env.RENDER_EXTERNAL_URL.replace(/\\/$/, "") + "/telegram/webhook/" + WEBHOOK_SECRET;
+    await telegram("setWebhook", { url, secret_token: WEBHOOK_SECRET, allowed_updates: ["message", "callback_query"] });
+    console.log("Telegram webhook configured");
+  } catch (error) {
+    console.error("Telegram webhook setup failed:", error.message);
+  }
+}
 app.use(express.static(path.join(__dirname, "public")));
 
 function publicOffer(offer) {
@@ -39,7 +129,8 @@ app.get("/health", (_req, res) => {
 app.get("/api/config", (_req, res) => {
   res.json({
     recipient: process.env.OFFER_RECIPIENT || "@koszakL",
-    botUsername: process.env.BOT_USERNAME || "koszak_bot_ai",
+    botUsername: BOT_USERNAME,
+    botEnabled: Boolean(BOT_TOKEN),
     mode: "demo"
   });
 });
@@ -84,7 +175,7 @@ app.post("/api/offers", (req, res) => {
     status: "active"
   };
   offers.set(id, offer);
-  res.status(201).json(publicOffer(offer));
+  res.status(201).json({ ...publicOffer(offer), botLink: "https://t.me/" + BOT_USERNAME + "?start=" + id });
 });
 
 app.get("/api/offers/:id", (req, res) => {
@@ -112,4 +203,4 @@ app.get("*", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, () => console.log(`LIFE MONEY NFT Offers listening on ${PORT}`));
+app.listen(PORT, () => { console.log(`LIFE MONEY NFT Offers listening on ${PORT}`); configureTelegramWebhook(); });
