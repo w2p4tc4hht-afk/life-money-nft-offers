@@ -71,6 +71,7 @@ tg?.ready(); tg?.expand();
 const $ = id => document.getElementById(id);
 let currentOffer = null;
 let currentLink = location.href;
+let currentBotLink = "";
 function remainingTime(expiresAt){const ms=Math.max(0,Date.parse(expiresAt)-Date.now());const total=Math.floor(ms/60000),days=Math.floor(total/1440),hours=Math.floor((total%1440)/60),mins=total%60;return (days?days+" д. ":"")+(hours?hours+" ч. ":"")+mins+" мин.";}
 function showOffer(data, isOwner=false) {
   currentOffer=data;
@@ -88,7 +89,7 @@ function showOffer(data, isOwner=false) {
   $("copyLink").classList.toggle("hidden", !isOwner);
   $("shareNative").classList.toggle("hidden", !isOwner);
   $("sendTelegram").classList.toggle("hidden", !isOwner);
-  if(isOwner){$("shareBox").textContent="Персональная ссылка для друга: "+currentLink;}
+  if(isOwner){$("shareBox").textContent="Ссылка для отправки другу через бота: "+(currentBotLink||currentLink)+"\\nДруг должен открыть бота и нажать Start.";}
 }
 async function loadOffer(id) {
   const res=await fetch("/api/offers/"+encodeURIComponent(id));
@@ -103,6 +104,7 @@ $("make").onclick = async () => {
     const res=await fetch("/api/offers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     const data=await res.json(); if(!res.ok) throw new Error(data.error||"Ошибка");
     currentLink=location.origin+"/?offer="+data.id;
+    currentBotLink=data.botLink||("https://t.me/koszak_bot_ai?start="+data.id);
     history.replaceState(null,"", "/?offer="+data.id);
     showOffer(data,true);
   }catch(e){$("result").textContent=e.message;}
@@ -122,9 +124,9 @@ $("openRecipient").onclick=()=>window.open("https://t.me/koszakL","_blank","noop
 $("openGift").onclick=()=>{if(currentOffer?.giftUrl)window.open(currentOffer.giftUrl,"_blank","noopener");};
 $("openRecipient").onclick=()=>window.open("https://t.me/koszakL","_blank","noopener");
 $("decline").onclick=()=>decide("declined");
-$("copyLink").onclick=async()=>{try{await navigator.clipboard.writeText(currentLink);$("copyLink").textContent="Ссылка скопирована";}catch(_){$("shareBox").textContent=currentLink;}};
-$("sendTelegram").onclick=()=>{const txt="Посмотри предложение на NFT "+currentOffer.giftName+" "+currentOffer.giftNumber+". Это пользовательское предложение LIFE MONEY.";window.open("https://t.me/share/url?url="+encodeURIComponent(currentLink)+"&text="+encodeURIComponent(txt),"_blank","noopener");};
-$("shareNative").onclick=async()=>{if(navigator.share){try{await navigator.share({title:"LIFE MONEY NFT Offer",text:"Посмотри моё предложение NFT",url:currentLink});}catch(_){}}else{$("shareBox").textContent=currentLink;}};
+$("copyLink").onclick=async()=>{try{await navigator.clipboard.writeText(currentBotLink||currentLink);$("copyLink").textContent="Ссылка скопирована";}catch(_){$("shareBox").textContent=currentLink;}};
+$("sendTelegram").onclick=()=>{const txt="Тебе отправили предложение LIFE MONEY по NFT "+currentOffer.giftName+" "+currentOffer.giftNumber+". Нажми Start у бота, чтобы увидеть кнопки ответа.";window.open("https://t.me/share/url?url="+encodeURIComponent(currentBotLink||currentLink)+"&text="+encodeURIComponent(txt),"_blank","noopener");};
+$("shareNative").onclick=async()=>{if(navigator.share){try{await navigator.share({title:"LIFE MONEY NFT Offer",text:"Посмотри предложение и открой бота, чтобы ответить",url:currentBotLink||currentLink});}catch(_){}}else{$("shareBox").textContent=currentLink;}};
 $("giftUrl").addEventListener("input",()=>{try{const u=new URL($("giftUrl").value.trim());const m=u.pathname.match(/^\/nft\/([A-Za-z0-9_]+)-([0-9]+)\/?$/);if(["t.me","telegram.me"].includes(u.hostname)&&m){$("gift").value=m[1];$("number").value="#"+m[2];}}catch(_){}});
 const offerId=new URLSearchParams(location.search).get("offer");
 if(offerId){loadOffer(offerId).catch(e=>{$("result").textContent=e.message;});}
