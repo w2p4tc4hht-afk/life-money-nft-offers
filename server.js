@@ -76,14 +76,18 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
         offer.respondedAt = new Date().toISOString();
         await telegram("answerCallbackQuery", { callback_query_id: q.id, text: decision === "accept" ? "Предложение принято" : "Предложение отклонено" });
         const nl = String.fromCharCode(10);
+        const recipient = String(offer.recipient || "@koszakL").replace(/^@/, "");
         const suffix = decision === "accept"
-          ? nl + nl + "Вы приняли пользовательское предложение. Это не перевод NFT: если хотите передать подарок, откройте его в Telegram и самостоятельно проверьте получателя @koszakL."
+          ? nl + nl + "Вы приняли предложение. Это не автоматическая передача NFT. Чтобы отправить подарок, откройте профиль получателя и самостоятельно выберите отправку подарка в Telegram. Перед подтверждением проверьте аккаунт и подарок."
           : nl + nl + "Вы отклонили предложение.";
+        const buttons = decision === "accept"
+          ? [[{ text: "🎁 Открыть профиль получателя", url: "https://t.me/" + recipient }], [{ text: "Открыть NFT", url: offer.giftUrl }]]
+          : [[{ text: "Открыть NFT", url: offer.giftUrl }]];
         await telegram("editMessageText", {
           chat_id: q.message.chat.id,
           message_id: q.message.message_id,
           text: q.message.text + suffix,
-          reply_markup: { inline_keyboard: [[{ text: "Открыть NFT", url: offer.giftUrl }]] }
+          reply_markup: { inline_keyboard: buttons }
         });
       }
     }
