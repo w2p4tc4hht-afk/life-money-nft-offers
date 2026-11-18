@@ -1,0 +1,19 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LIFE MONEY — написать владельцу</title>
+<style>body{margin:0;background:#100f16;color:white;font:16px system-ui;padding:24px}main{max-width:460px;margin:auto}.card{background:#1b1924;border:1px solid #393343;border-radius:16px;padding:18px}label{display:block;margin:14px 0 6px;color:#ddd}input,textarea,select{box-sizing:border-box;width:100%;padding:13px;border-radius:10px;border:1px solid #494252;background:#111019;color:white;font:inherit}button{width:100%;padding:14px;border:0;border-radius:11px;background:#f17bb8;color:#251522;font-weight:800;margin-top:16px}.muted{color:#aaa3b4;font-size:13px}</style>
+<main><p style="color:#f17bb8;font-weight:800">LIFE MONEY</p><h2>Написать владельцу NFT</h2><div class="card">
+<label>Username владельца</label><input id="user" placeholder="@username">
+<label>Ссылка на NFT</label><input id="gift" placeholder="https://t.me/nft/Slug">
+<label>Предложение</label><input id="price" placeholder="Например, 0.5 TON или 100 Stars">
+<label>Сообщение</label><textarea id="msg" rows="4">Здравствуйте! Хочу предложить цену за ваш подарок. Готов обсудить сделку.</textarea>
+<button id="open">Открыть чат Telegram</button><p class="muted" id="status">Telegram откроет переписку с заполненным текстом. Отправку подтверждаешь сам.</p></div></main>
+<script>
+document.getElementById("open").addEventListener("click",function(){
+ const u=document.getElementById("user").value.trim().replace(/^@/,"");
+ if(!/^[A-Za-z0-9_]{5,32}$/.test(u)){document.getElementById("status").textContent="Введи публичный username Telegram.";return;}
+ const gift=document.getElementById("gift").value.trim();
+ const price=document.getElementById("price").value.trim();
+ const message=document.getElementById("msg").value.trim()+(gift?"\nNFT: "+gift:"")+(price?"\nМоё предложение: "+price:"");
+ document.getElementById("status").textContent="Открываю Telegram. Проверь текст и отправь его в чате.";
+ window.location.href="https://t.me/"+u+"?text="+encodeURIComponent(message);
+});
+</script></html>
