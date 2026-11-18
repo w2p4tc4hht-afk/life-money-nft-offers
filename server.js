@@ -191,6 +191,86 @@ app.post("/api/mtproto/gift/send-offer", requireSetupToken, async (req, res) => 
     res.status(400).json({ ok: false, error: error.message || "Telegram не принял предложение." });
   }
 });
+ 
+// Personal-account flow: seller receives a private message with a link to a transparent confirmation page.
+const { sendPersonalMessage } = require("./lib/gift-offers");
+const personalOffers = new Map();
+
+app.post("/api/mtproto/personal-offer/create", requireSetupToken, async (req, res) => {
+  try {
+    if (req.body?.confirm !== true) return res.status(400).json({ error: "Подтверди отправку личного сообщения." });
+    const link = String(req.body?.link || "");
+    const ownerUsername = String(req.body?.ownerUsername || "");
+    const price = String(req.body?.price || "");
+    const currency = String(req.body?.currency || "STARS");
+    const displayValue = String(req.body?.displayValue || "");
+    const duration = Number(req.body?.duration);
+    if (!price || !["STARS", "TON"].includes(currency) || !Number.isFinite(Number(price)) || Number(price) <= 0) {
+      return res.status(400).json({ error: "Проверь фактическую сумму предложения." });
+    }
+    if (!ownerUsername.trim()) return res.status(400).json({ error: "Укажи username владельца NFT." });
+    if (displayValue && (!Number.isFinite(Number(displayValue)) || Number(displayValue) <= 0)) {
+      return res.status(400).json({ error: "Проверь оценочную стоимость." });
+    }
+    const inspected = await inspectGift(link, ownerUsername);
+    const id = crypto.randomBytes(16).toString("hex");
+    const base = String(process.env.RENDER_EXTERNAL_URL || "https://life-money-nft-offers.onrender.com").replace(/\/$/, "");
+    const offer = {
+      id, link, ownerUsername, giftTitle: inspected.title, giftNumber: inspected.number,
+      price, currency, displayValue, duration, status: "pending",
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + duration * 1000).toISOString()
+    };
+    personalOffers.set(id, offer);
+    const pageUrl = base + "/offer.html?id=" + id;
+    const estimated = displayValue ? "Оценочная стоимость NFT: " + displayValue + " ⭐.\n" : "";
+    const message = "🎁 LIFE MONEY — предложение по NFT\n\n" +
+      "Подарок: " + inspected.title + " #" + inspected.number + "\n" +
+      estimated +
+      "Посмотри условия и подтверди решение по защищённой странице LIFE MONEY:\n" + pageUrl + "\n\n" +
+      "Перед подтверждением на странице будут показаны точные условия фактического предложения Telegram.";
+    const delivery = await sendPersonalMessage({ link, ownerUsername, message });
+    res.status(201).json({ ok: true, id, pageUrl, owner: delivery.owner, messageId: delivery.messageId });
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Не удалось отправить личное сообщение." });
+  }
+});
+
+app.get("/api/mtproto/personal-offer/:id", (req, res) => {
+  const offer = personalOffers.get(req.params.id);
+  if (!offer) return res.status(404).json({ error: "Предложение не найдено." });
+  if (offer.status === "pending" && Date.now() >= Date.parse(offer.expiresAt)) offer.status = "expired";
+  res.json({
+    giftTitle: offer.giftTitle, giftNumber: offer.giftNumber, giftUrl: offer.link,
+    price: offer.price, currency: offer.currency, displayValue: offer.displayValue || null,
+    status: offer.status, expiresAt: offer.expiresAt
+  });
+});
+
+app.post("/api/mtproto/personal-offer/:id/decision", async (req, res) => {
+  const offer = personalOffers.get(req.params.id);
+  if (!offer) return res.status(404).json({ error: "Предложение не найдено." });
+  if (offer.status === "pending" && Date.now() >= Date.parse(offer.expiresAt)) offer.status = "expired";
+  if (offer.status !== "pending") return res.status(409).json({ error: "Предложение уже закрыто или срок истёк." });
+  const decision = req.body?.decision;
+  if (decision === "decline") {
+    offer.status = "declined";
+    return res.json({ ok: true, status: offer.status });
+  }
+  if (decision !== "accept") return res.status(400).json({ error: "Неизвестное действие." });
+  try {
+    const result = await sendGiftOffer({
+      link: offer.link, ownerUsername: offer.ownerUsername,
+      price: offer.price, currency: offer.currency, duration: offer.duration
+    });
+    offer.status = "sent";
+    offer.respondedAt = new Date().toISOString();
+    res.json({ ok: true, status: offer.status, result });
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Telegram не принял предложение." });
+  }
+});
+
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, app: "LIFE MONEY NFT Offers", version: "1.1.0" });
