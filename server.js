@@ -75,7 +75,6 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
         offer.respondedAt = new Date().toISOString();
         await telegram("answerCallbackQuery", { callback_query_id: q.id, text: decision === "accept" ? "Предложение принято" : "Предложение отклонено" });
         const nl = String.fromCharCode(10);
-  const message = "🎁 LIFE MONEY NFT OFFER" + nl + nl + "Пользователь предлагает вам " +
         const suffix = decision === "accept"
           ? nl + nl + "Вы приняли пользовательское предложение. Это не перевод NFT: если хотите передать подарок, откройте его в Telegram и самостоятельно проверьте получателя @koszakL."
           : nl + nl + "Вы отклонили предложение.";
