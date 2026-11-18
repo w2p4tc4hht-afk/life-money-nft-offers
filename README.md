@@ -20,3 +20,17 @@ npm start
 
 ## Render
 Create a Node Web Service from this repository. Build command: `npm install`. Start command: `npm start`. Set `OFFER_RECIPIENT=@koszakL` and `BOT_USERNAME=koszak_bot_ai` as environment variables if desired. Do not commit bot tokens or secrets.
+
+
+## Encrypted Telegram session storage (in progress)
+
+Cloudflare Worker source: `cloudflare/worker.js`  
+Node encryption/storage client: `lib/session-store.js`
+
+Required secrets (do not commit or share):
+- Cloudflare Worker: `API_SECRET` (random secret, 32+ characters)
+- Render: `SESSION_STORE_URL` (Worker base URL, e.g. `https://life-money-session-store.<account>.workers.dev`)
+- Render: `SESSION_STORE_API_SECRET` (same value as Worker `API_SECRET`)
+- Render: `SESSION_ENCRYPTION_KEY` (base64-encoded random 32-byte key)
+
+The Node storage client encrypts with AES-256-GCM before sending data to the Worker. D1 receives ciphertext only. The client is a storage primitive and is not yet called by the app's Telegram authorization flow; do not treat this as a completed Telegram MTProto integration.
