@@ -94,7 +94,8 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
 async function configureTelegramWebhook() {
   if (!BOT_TOKEN || !process.env.RENDER_EXTERNAL_URL) return;
   try {
-    const base = process.env.RENDER_EXTERNAL_URL.endsWith("/") ? process.env.RENDER_EXTERNAL_URL.slice(0, -1) : process.env.RENDER_EXTERNAL_URL;\n    const url = base + "/telegram/webhook/" + WEBHOOK_SECRET;
+    const base = process.env.RENDER_EXTERNAL_URL.endsWith("/") ? process.env.RENDER_EXTERNAL_URL.slice(0, -1) : process.env.RENDER_EXTERNAL_URL;
+    const url = base + "/telegram/webhook/" + WEBHOOK_SECRET;
     await telegram("setWebhook", { url, secret_token: WEBHOOK_SECRET, allowed_updates: ["message", "callback_query"] });
     console.log("Telegram webhook configured");
   } catch (error) {
