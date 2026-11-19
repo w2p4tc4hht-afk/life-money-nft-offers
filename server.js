@@ -366,6 +366,91 @@ app.post("/api/miniapp/play",miniAuth,(req,res)=>{
  miniBalances.set(id,miniBalances.get(id)+reward);res.json({ok:true,result,reward,balance:miniBalances.get(id)});
 });
 
+
+const duelQueue = [];
+const duelMatches = new Map();
+const duelByPlayer = new Map();
+function playerName(user) { return [user.first_name,user.last_name].filter(Boolean).join(" ") || (user.username ? "@"+user.username : "Игрок"); }
+function currentBalance(id) { if(!miniBalances.has(id)) miniBalances.set(id,100); return miniBalances.get(id); }
+app.post("/api/miniapp/solo", miniAuth, (req,res) => {
+  const id=String(req.tgUser.id), mode=String(req.body?.mode||"");
+  currentBalance(id);
+  if(mode==="number") {
+    const guess=Number(req.body?.guess);
+    if(!Number.isInteger(guess)||guess<1||guess>6) return res.status(400).json({error:"Выбери число от 1 до 6."});
+    const rolled=crypto.randomInt(1,7), reward=guess===rolled?10:0;
+    miniBalances.set(id,currentBalance(id)+reward);
+    return res.json({ok:true,result:"🎲 Выпало число "+rolled+(reward?" — ты угадал!":" — не угадал, попробуй ещё."),rolled,reward,balance:currentBalance(id)});
+  }
+  if(mode==="slots") {
+    const symbols=["7","🍒","🍋","💎","⭐"];
+    const reels=Array.from({length:3},()=>symbols[crypto.randomInt(symbols.length)]);
+    const jackpot=reels.every(x=>x==="7");
+    const triple=!jackpot&&reels[0]===reels[1]&&reels[1]===reels[2];
+    const pair=!triple&&new Set(reels).size===2;
+    const reward=jackpot?500:(triple?30:(pair?5:0));
+    miniBalances.set(id,currentBalance(id)+reward);
+    return res.json({ok:true,result:reels.join("  "),jackpot,reward,balance:currentBalance(id)});
+  }
+  return res.status(400).json({error:"Неизвестный режим."});
+});
+app.post("/api/miniapp/duel/queue", miniAuth, (req,res) => {
+  const id=String(req.tgUser.id);
+  currentBalance(id);
+  const previousId=duelByPlayer.get(id);
+  if(previousId) {
+    const previous=duelMatches.get(previousId);
+    if(previous && previous.status!=="finished") return res.json({ok:true,matchId:previous.id,status:previous.status});
+    duelByPlayer.delete(id);
+  }
+  for(let i=duelQueue.length-1;i>=0;i--) if(Date.now()-duelQueue[i].createdAt>90000) duelQueue.splice(i,1);
+  const opponentIndex=duelQueue.findIndex(p=>p.id!==id);
+  if(opponentIndex<0) {
+    duelQueue.push({id,name:playerName(req.tgUser),createdAt:Date.now()});
+    const matchId=crypto.randomBytes(10).toString("hex");
+    duelMatches.set(matchId,{id:matchId,status:"waiting",players:[{id,name:playerName(req.tgUser),guess:null}],createdAt:Date.now(),result:null});
+    duelByPlayer.set(id,matchId);
+    return res.json({ok:true,matchId,status:"waiting"});
+  }
+  const opponent=duelQueue.splice(opponentIndex,1)[0];
+  const matchId=crypto.randomBytes(10).toString("hex");
+  const match={id:matchId,status:"playing",players:[opponent,{id,name:playerName(req.tgUser),guess:null}],createdAt:Date.now(),result:null};
+  duelMatches.set(matchId,match);
+  duelByPlayer.set(opponent.id,matchId); duelByPlayer.set(id,matchId);
+  res.json({ok:true,matchId,status:"playing",opponent:opponent.name});
+});
+app.get("/api/miniapp/duel/:id", miniAuth, (req,res) => {
+  const match=duelMatches.get(req.params.id),id=String(req.tgUser.id);
+  if(!match||!match.players.some(p=>p.id===id)) return res.status(404).json({error:"Матч не найден."});
+  const me=match.players.find(p=>p.id===id),opponent=match.players.find(p=>p.id!==id);
+  res.json({ok:true,status:match.status,opponent:opponent?.name||"Ожидаем соперника",myGuess:me.guess,opponentGuessed:opponent?.guess!=null,result:match.result});
+});
+app.post("/api/miniapp/duel/:id/guess", miniAuth, (req,res) => {
+  const match=duelMatches.get(req.params.id),id=String(req.tgUser.id),guess=Number(req.body?.guess);
+  if(!match||!match.players.some(p=>p.id===id)) return res.status(404).json({error:"Матч не найден."});
+  if(match.status!=="playing") return res.status(409).json({error:"Матч ещё не начался или уже завершён."});
+  if(!Number.isInteger(guess)||guess<1||guess>6) return res.status(400).json({error:"Выбери число от 1 до 6."});
+  const me=match.players.find(p=>p.id===id);
+  if(me.guess!==null) return res.status(409).json({error:"Ты уже сделал выбор."});
+  me.guess=guess;
+  if(match.players.every(p=>p.guess!==null)) {
+    const rolled=crypto.randomInt(1,7);
+    const winners=match.players.filter(p=>p.guess===rolled);
+    if(winners.length===1) {
+      miniBalances.set(winners[0].id,currentBalance(winners[0].id)+20);
+      match.result={rolled,winner:winners[0].id,reward:20,text:"🎉 "+winners[0].name+" угадал число и получает 20 LM!"};
+    } else if(winners.length===2) {
+      for(const p of winners) miniBalances.set(p.id,currentBalance(p.id)+5);
+      match.result={rolled,winner:null,reward:5,text:"🤝 Оба угадали! Каждый получает 5 LM."};
+    } else {
+      match.result={rolled,winner:null,reward:0,text:"🎲 Выпало "+rolled+". Никто не угадал — сыграйте ещё раз!"};
+    }
+    match.status="finished";
+  }
+  const opponent=match.players.find(p=>p.id!==id);
+  res.json({ok:true,status:match.status,myGuess:me.guess,opponentGuessed:opponent?.guess!=null,result:match.result,balance:currentBalance(id)});
+});
+
 app.get("/health", (_req, res) => {
   res.json({ ok: true, app: "LIFE MONEY NFT Offers", version: "1.2.0", news: getNewsPublisherStatus() });
 });
