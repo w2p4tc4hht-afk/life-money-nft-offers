@@ -406,18 +406,19 @@ app.post("/api/miniapp/duel/queue", miniAuth, (req,res) => {
   for(let i=duelQueue.length-1;i>=0;i--) if(Date.now()-duelQueue[i].createdAt>90000) duelQueue.splice(i,1);
   const opponentIndex=duelQueue.findIndex(p=>p.id!==id);
   if(opponentIndex<0) {
-    duelQueue.push({id,name:playerName(req.tgUser),createdAt:Date.now()});
     const matchId=crypto.randomBytes(10).toString("hex");
+    duelQueue.push({id,name:playerName(req.tgUser),createdAt:Date.now(),matchId});
     duelMatches.set(matchId,{id:matchId,status:"waiting",players:[{id,name:playerName(req.tgUser),guess:null}],createdAt:Date.now(),result:null});
     duelByPlayer.set(id,matchId);
     return res.json({ok:true,matchId,status:"waiting"});
   }
   const opponent=duelQueue.splice(opponentIndex,1)[0];
-  const matchId=crypto.randomBytes(10).toString("hex");
-  const match={id:matchId,status:"playing",players:[opponent,{id,name:playerName(req.tgUser),guess:null}],createdAt:Date.now(),result:null};
-  duelMatches.set(matchId,match);
-  duelByPlayer.set(opponent.id,matchId); duelByPlayer.set(id,matchId);
-  res.json({ok:true,matchId,status:"playing",opponent:opponent.name});
+  const match=duelMatches.get(opponent.matchId);
+  if(!match || match.status!=="waiting") return res.status(409).json({error:"Соперник уже вышел. Нажми поиск ещё раз."});
+  match.players.push({id,name:playerName(req.tgUser),guess:null});
+  match.status="playing";
+  duelByPlayer.set(opponent.id,match.id); duelByPlayer.set(id,match.id);
+  res.json({ok:true,matchId:match.id,status:"playing",opponent:opponent.name});
 });
 app.get("/api/miniapp/duel/:id", miniAuth, (req,res) => {
   const match=duelMatches.get(req.params.id),id=String(req.tgUser.id);
