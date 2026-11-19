@@ -10,7 +10,7 @@ const { startNewsPublisher, getNewsPublisherStatus } = require("./lib/news-publi
 
 app.use(express.json({ limit: "100kb" }));
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
+const BOT_TOKEN = process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN;
 const BOT_USERNAME = (process.env.BOT_USERNAME || "koszak_bot_ai").replace(/^@/, "");
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || crypto.randomBytes(24).toString("hex");
 
