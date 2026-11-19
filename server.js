@@ -355,7 +355,8 @@ app.post("/api/miniapp/play",miniAuth,(req,res)=>{
  else {const hit=crypto.randomInt(0,2)===1;reward=hit?3:0;result=hit?"🏀 Попадание! +3 очка":"🏀 Мимо! Попробуй ещё."}
  miniBalances.set(id,miniBalances.get(id)+reward);res.json({ok:true,result,reward,balance:miniBalances.get(id)});
 });
-\napp.get("/health", (_req, res) => {
+
+app.get("/health", (_req, res) => {
   res.json({ ok: true, app: "LIFE MONEY NFT Offers", version: "1.2.0", news: getNewsPublisherStatus() });
 });
 
