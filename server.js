@@ -61,7 +61,7 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
         const appUrl = String(process.env.RENDER_EXTERNAL_URL || "https://life-money-nft-offers.onrender.com").replace(/\/$/, "");
         await telegram("sendMessage", {
           chat_id: update.message.chat.id,
-          text: "Открой LIFE MONEY — приложение с играми и NFT-предложениями.",
+          text: "Открой LIFE MONEY — мини-игры, игровой баланс и профиль прямо в Telegram.",
           reply_markup: { inline_keyboard: [[{ text: "✦ ОТКРЫТЬ LIFE MONEY", web_app: { url: appUrl } }]] }
         });
       }
@@ -83,7 +83,7 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
           const appUrl = String(process.env.RENDER_EXTERNAL_URL || "https://life-money-nft-offers.onrender.com").replace(/\/$/, "");
           await telegram("sendMessage", {
             chat_id: chatId,
-            text: "🌸 Добро пожаловать в LIFE MONEY!\\n\\nОткрой приложение: NFT-предложения, мини-игры и профиль — в одном красивом интерфейсе.\\n\\nИгровые очки демонстрационные, без реальных денег.",
+            text: "🌸 Добро пожаловать в LIFE MONEY!\\n\\nМини-игры, игровой баланс и профиль — всё внутри Telegram.\\n\\nИгровые очки демонстрационные, без реальных денег.",
             reply_markup: { inline_keyboard: [
               [{ text: "✦ ОТКРЫТЬ LIFE MONEY", web_app: { url: appUrl } }],
               [{ text: "🎮 Игры в чате", callback_data: "arcade:menu" }]
