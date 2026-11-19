@@ -57,6 +57,14 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
       if (pieces[0] === "/games" || pieces[0] === "/game") {
         await sendArcadeMenu(telegram, update.message.chat.id, update.message.from);
       }
+      if (pieces[0] === "/app") {
+        const appUrl = String(process.env.RENDER_EXTERNAL_URL || "https://life-money-nft-offers.onrender.com").replace(/\\/$/, "");
+        await telegram("sendMessage", {
+          chat_id: update.message.chat.id,
+          text: "Открой LIFE MONEY — приложение с играми и NFT-предложениями.",
+          reply_markup: { inline_keyboard: [[{ text: "✦ ОТКРЫТЬ LIFE MONEY", web_app: { url: appUrl } }]] }
+        });
+      }
       if (pieces[0] === "/start") {
         const chatId = update.message.chat.id;
         const startParam = pieces[1] || "";
