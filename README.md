@@ -46,3 +46,31 @@ Open `/connect.html` after deployment. Configure these Render environment variab
 The QR login uses Teleproto's `signInUserWithQrCode` flow. The QR code is short-lived; scan it only in the official Telegram app under Settings → Devices → Link Desktop Device. Never share the QR code or setup token. A 2FA password, if requested by Telegram, is submitted only to this app's protected HTTPS endpoint and is held in process memory for the login attempt; it is not written to logs or the database. The resulting MTProto session is encrypted with AES-256-GCM before being sent to Cloudflare D1.
 
 This is the account-connection step only. Native collectible-gift offer sending still requires separate implementation and verification of Telegram's current API parameters and eligibility rules.
+
+
+## Automated NFT / TON news publishing
+
+The server includes an opt-out RSS/Atom news publisher for `@koszakNEW`.
+It checks curated TON, crypto, Telegram Gifts, Fragment, and Portals news feeds
+every 15 minutes by default, suppresses duplicate links in-process, and sends
+new headlines with their original source links. On first boot it seeds the
+duplicate filter instead of flooding the channel with old stories.
+
+It also checks Telegram Bot API `getAvailableGifts` and posts when the available
+gift catalogue changes. This Bot API method is not a collectible resale-price
+feed; resale prices and Fragment/Portals listings are not inferred from it.
+
+Set these Render environment variables:
+- `BOT_TOKEN`: the token for `@koszak_bot_ai` (the server already uses this name)
+- `NEWS_CHANNEL=@koszakNEW`
+- `NEWS_AUTOPUBLISH=true`
+- `NEWS_POLL_MINUTES=15`
+- `NEWS_MAX_POSTS=4`
+
+Optional: `NEWS_FEEDS` may contain a comma-separated list of RSS/Atom URLs.
+The publisher is disabled by setting `NEWS_AUTOPUBLISH=false`.
+Status is exposed at `/news/status` and in `/health`.
+
+The publisher does not invent summaries or translate source headlines; it
+passes the feed headline and a cleaned excerpt with a direct source link.
+Check feed terms and rights before using third-party content at scale.
