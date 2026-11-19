@@ -386,7 +386,7 @@ app.post("/api/miniapp/solo", miniAuth, (req,res) => {
     const bet=Number(req.body?.bet);
     if(![1,5,10,20].includes(bet)) return res.status(400).json({error:"Выбери ставку 1, 5, 10 или 20 LM."});
     if(currentBalance(id)<bet) return res.status(400).json({error:"Недостаточно LM для этой ставки."});
-    const symbols=[{v:"7️⃣",m:60},{v:"💎",m:25},{v:"⭐",m:12},{v:"🍇",m:8},{v:"🍒",m:5}];
+    const symbols=[{v:"7️⃣",m:60},{v:"💎",m:25},{v:"🔔",m:12},{v:"🍀",m:8},{v:"🃏",m:5}];
     // Each reel shows three rows; only the middle row (index 1) is the winning payline.
     const reels=Array.from({length:3},()=>Array.from({length:3},()=>symbols[crypto.randomInt(symbols.length)]));
     const center=reels.map(column=>column[1]);
