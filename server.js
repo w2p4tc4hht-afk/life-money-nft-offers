@@ -387,10 +387,12 @@ app.post("/api/miniapp/solo", miniAuth, (req,res) => {
     if(![1,5,10,20].includes(bet)) return res.status(400).json({error:"Выбери ставку 1, 5, 10 или 20 LM."});
     if(currentBalance(id)<bet) return res.status(400).json({error:"Недостаточно LM для этой ставки."});
     const symbols=[{v:"7️⃣",m:60},{v:"💎",m:25},{v:"⭐",m:12},{v:"🍇",m:8},{v:"🍒",m:5}];
-    const reels=Array.from({length:3},()=>symbols[crypto.randomInt(symbols.length)]);
-    const win=reels.every(x=>x.v===reels[0].v), multiplier=win?reels[0].m:0, payout=bet*multiplier;
+    // Each reel shows three rows; only the middle row (index 1) is the winning payline.
+    const reels=Array.from({length:3},()=>Array.from({length:3},()=>symbols[crypto.randomInt(symbols.length)]));
+    const center=reels.map(column=>column[1]);
+    const win=center.every(x=>x.v===center[0].v), multiplier=win?center[0].m:0, payout=bet*multiplier;
     miniBalances.set(id,currentBalance(id)-bet+payout);
-    return res.json({ok:true,reels:reels.map(x=>x.v),win,jackpot:win&&reels[0].v==="7️⃣",multiplier,payout,bet,balance:currentBalance(id)});
+    return res.json({ok:true,reels:reels.map(column=>column.map(x=>x.v)),center:center.map(x=>x.v),win,jackpot:win&&center[0].v==="7️⃣",multiplier,payout,bet,balance:currentBalance(id)});
   }
   return res.status(400).json({error:"Неизвестный режим."});
 });
