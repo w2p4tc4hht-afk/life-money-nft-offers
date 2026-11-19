@@ -59,13 +59,19 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
       }
       if (pieces[0] === "/start") {
         const chatId = update.message.chat.id;
-        const id = (pieces[1] || "").split("_")[0];
-        if (id) {
-          const offer = expireIfNeeded(offers.get(id));
-          if (offer && offer.status === "active") await sendOfferToChat(chatId, offer);
-          else await telegram("sendMessage", { chat_id: chatId, text: "Предложение не найдено или срок его действия истёк." });
+        const startParam = pieces[1] || "";
+        if (startParam.startsWith("game_")) {
+          const matchId = startParam.slice(5);
+          await require("./lib/arcade").joinFromStart({ telegram, chatId, user: update.message.from, matchId });
         } else {
+          const id = startParam.split("_")[0];
+          if (id) {
+            const offer = expireIfNeeded(offers.get(id));
+            if (offer && offer.status === "active") await sendOfferToChat(chatId, offer);
+            else await telegram("sendMessage", { chat_id: chatId, text: "Предложение не найдено или срок его действия истёк." });
+          } else {
           await telegram("sendMessage", { chat_id: chatId, text: "Привет! Я LIFE MONEY.\n\nКоманда /games открывает аркаду 🏀 🎰 🎲 с демонстрационными игровыми очками. Очки нельзя купить или вывести.", reply_markup: { inline_keyboard: [[{ text: "🎮 Открыть игры", callback_data: "arcade:menu" }]] } });
+          }
         }
       }
     }
