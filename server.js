@@ -330,18 +330,28 @@ app.post("/api/mtproto/personal-offer/:id/decision", async (req, res) => {
 const miniBalances = new Map();
 function verifyTelegramInitData(initData) {
   if (!BOT_TOKEN || !initData) throw new Error("Открой LIFE MONEY через Telegram.");
-  const p=new URLSearchParams(initData), hash=p.get("hash");
-  if(!hash) throw new Error("Не удалось проверить Telegram-пользователя.");
-  p.delete("hash"); p.delete("signature");
-  const check=[...p.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+"="+v).join("\n");
-  const secret=crypto.createHmac("sha256","WebAppData").update(BOT_TOKEN).digest();
-  const expected=crypto.createHmac("sha256",secret).update(check).digest("hex");
-  const a=Buffer.from(expected,"hex"),b=Buffer.from(hash,"hex");
-  if(a.length!==b.length||!crypto.timingSafeEqual(a,b)) throw new Error("Проверка Telegram не пройдена. Перезапусти приложение.");
-  const authDate=Number(p.get("auth_date")||0),now=Math.floor(Date.now()/1000);
-  if(!authDate||now-authDate>86400||authDate>now+60) throw new Error("Сессия устарела. Закрой и снова открой приложение.");
-  let user; try{user=JSON.parse(p.get("user")||"{}")}catch(_){throw new Error("Не удалось прочитать профиль Telegram.");}
-  if(!user.id) throw new Error("Telegram не передал ID пользователя.");
+  const params = new URLSearchParams(initData);
+  const receivedHash = params.get("hash");
+  if (!receivedHash) throw new Error("Telegram не передал подпись пользователя.");
+  const secretKey = crypto.createHmac("sha256", "WebAppData").update(BOT_TOKEN).digest();
+  const makeHash = (includeSignature) => {
+    const entries = [...params.entries()].filter(([key]) => key !== "hash" && (includeSignature || key !== "signature"));
+    entries.sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0);
+    const checkString = entries.map(([key,value]) => key + "=" + value).join("\n");
+    return crypto.createHmac("sha256", secretKey).update(checkString).digest("hex");
+  };
+  const expectedHashes = [makeHash(true), makeHash(false)];
+  const supplied = Buffer.from(receivedHash, "hex");
+  const valid = expectedHashes.some(value => {
+    const expected = Buffer.from(value, "hex");
+    return expected.length === supplied.length && crypto.timingSafeEqual(expected, supplied);
+  });
+  if (!valid) throw new Error("Подпись Telegram не совпала. Закрой Mini App и открой его кнопкой меню бота.");
+  const authDate = Number(params.get("auth_date") || 0), now = Math.floor(Date.now()/1000);
+  if (!authDate || now-authDate > 86400 || authDate > now+60) throw new Error("Сессия Telegram устарела. Закрой и снова открой приложение.");
+  let user;
+  try { user = JSON.parse(params.get("user") || "{}"); } catch (_) { throw new Error("Не удалось прочитать профиль Telegram."); }
+  if (!user.id) throw new Error("Telegram не передал ID пользователя.");
   return user;
 }
 function miniAuth(req,res,next){try{req.tgUser=verifyTelegramInitData(req.get("x-telegram-init-data")||"");next()}catch(e){res.status(401).json({error:e.message})}}
