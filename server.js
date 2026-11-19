@@ -63,6 +63,8 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
         if (startParam.startsWith("game_")) {
           const matchId = startParam.slice(5);
           await require("./lib/arcade").joinFromStart({ telegram, chatId, user: update.message.from, matchId });
+        } else if (startParam === "arcade" || startParam.startsWith("arcade_")) {
+          await sendArcadeMenu(telegram, chatId, update.message.from);
         } else {
           const id = startParam.split("_")[0];
           if (id) {
@@ -70,7 +72,15 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
             if (offer && offer.status === "active") await sendOfferToChat(chatId, offer);
             else await telegram("sendMessage", { chat_id: chatId, text: "Предложение не найдено или срок его действия истёк." });
           } else {
-          await telegram("sendMessage", { chat_id: chatId, text: "Привет! Я LIFE MONEY.\n\nКоманда /games открывает аркаду 🏀 🎰 🎲 с демонстрационными игровыми очками. Очки нельзя купить или вывести.", reply_markup: { inline_keyboard: [[{ text: "🎮 Открыть игры", callback_data: "arcade:menu" }]] } });
+          const appUrl = String(process.env.RENDER_EXTERNAL_URL || "https://life-money-nft-offers.onrender.com").replace(/\\/$/, "");
+          await telegram("sendMessage", {
+            chat_id: chatId,
+            text: "🌸 Добро пожаловать в LIFE MONEY!\\n\\nОткрой приложение: NFT-предложения, мини-игры и профиль — в одном красивом интерфейсе.\\n\\nИгровые очки демонстрационные, без реальных денег.",
+            reply_markup: { inline_keyboard: [
+              [{ text: "✦ ОТКРЫТЬ LIFE MONEY", web_app: { url: appUrl } }],
+              [{ text: "🎮 Игры в чате", callback_data: "arcade:menu" }]
+            ] }
+          });
           }
         }
       }
@@ -116,8 +126,17 @@ async function configureTelegramWebhook() {
     await telegram("setWebhook", { url, secret_token: WEBHOOK_SECRET, allowed_updates: ["message", "callback_query"] });
     await telegram("setMyCommands", { commands: [
       { command: "start", description: "Открыть LIFE MONEY" },
+      { command: "app", description: "Открыть приложение" },
       { command: "games", description: "Игры 🏀 🎰 🎲" }
     ] });
+    try {
+      await telegram("setChatMenuButton", {
+        menu_button: { type: "web_app", text: "LIFE MONEY", web_app: { url: base } }
+      });
+      console.log("Telegram Mini App menu button configured");
+    } catch (menuError) {
+      console.warn("Mini App menu button not configured:", menuError.message);
+    }
     console.log("Telegram webhook configured");
   } catch (error) {
     console.error("Telegram webhook setup failed:", error.message);
