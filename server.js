@@ -326,7 +326,36 @@ app.post("/api/mtproto/personal-offer/:id/decision", async (req, res) => {
 });
 
 
-app.get("/health", (_req, res) => {
+
+const miniBalances = new Map();
+function verifyTelegramInitData(initData) {
+  if (!BOT_TOKEN || !initData) throw new Error("Открой LIFE MONEY через Telegram.");
+  const p=new URLSearchParams(initData), hash=p.get("hash");
+  if(!hash) throw new Error("Не удалось проверить Telegram-пользователя.");
+  p.delete("hash"); p.delete("signature");
+  const check=[...p.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+"="+v).join("\n");
+  const secret=crypto.createHmac("sha256","WebAppData").update(BOT_TOKEN).digest();
+  const expected=crypto.createHmac("sha256",secret).update(check).digest("hex");
+  const a=Buffer.from(expected,"hex"),b=Buffer.from(hash,"hex");
+  if(a.length!==b.length||!crypto.timingSafeEqual(a,b)) throw new Error("Проверка Telegram не пройдена. Перезапусти приложение.");
+  const authDate=Number(p.get("auth_date")||0),now=Math.floor(Date.now()/1000);
+  if(!authDate||now-authDate>86400||authDate>now+60) throw new Error("Сессия устарела. Закрой и снова открой приложение.");
+  let user; try{user=JSON.parse(p.get("user")||"{}")}catch(_){throw new Error("Не удалось прочитать профиль Telegram.");}
+  if(!user.id) throw new Error("Telegram не передал ID пользователя.");
+  return user;
+}
+function miniAuth(req,res,next){try{req.tgUser=verifyTelegramInitData(req.get("x-telegram-init-data")||"");next()}catch(e){res.status(401).json({error:e.message})}}
+app.get("/api/miniapp/me",miniAuth,(req,res)=>{const id=String(req.tgUser.id);if(!miniBalances.has(id))miniBalances.set(id,100);res.json({ok:true,user:{first_name:req.tgUser.first_name||"",last_name:req.tgUser.last_name||"",username:req.tgUser.username||""},balance:miniBalances.get(id)})});
+app.post("/api/miniapp/play",miniAuth,(req,res)=>{
+ const id=String(req.tgUser.id),mode=String(req.body?.mode||"");if(!miniBalances.has(id))miniBalances.set(id,100);
+ if(!["slots","dice","basketball"].includes(mode))return res.status(400).json({error:"Неизвестная игра."});
+ let result="",reward=0;
+ if(mode==="slots"){const a=["🍒","🍋","🍇","💎","⭐"],r=Array.from({length:3},()=>a[crypto.randomInt(a.length)]);reward=r.every(x=>x===r[0])?20:(new Set(r).size===2?5:0);result=r.join("  ")}
+ else if(mode==="dice"){const n=crypto.randomInt(1,7);reward=n>=5?8:0;result="🎲 Выпало: "+n+(reward?" — победа!":" — попробуй ещё.")}
+ else {const hit=crypto.randomInt(0,2)===1;reward=hit?3:0;result=hit?"🏀 Попадание! +3 очка":"🏀 Мимо! Попробуй ещё."}
+ miniBalances.set(id,miniBalances.get(id)+reward);res.json({ok:true,result,reward,balance:miniBalances.get(id)});
+});
+\napp.get("/health", (_req, res) => {
   res.json({ ok: true, app: "LIFE MONEY NFT Offers", version: "1.2.0", news: getNewsPublisherStatus() });
 });
 
