@@ -65,7 +65,7 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
           if (offer && offer.status === "active") await sendOfferToChat(chatId, offer);
           else await telegram("sendMessage", { chat_id: chatId, text: "Предложение не найдено или срок его действия истёк." });
         } else {
-          await telegram("sendMessage", { chat_id: chatId, text: "Привет! Я LIFE MONEY NFT Offers. Открой ссылку предложения, чтобы посмотреть подарок и ответить." });
+          await telegram("sendMessage", { chat_id: chatId, text: "Привет! Я LIFE MONEY.\n\nКоманда /games открывает аркаду 🏀 🎰 🎲 с демонстрационными игровыми очками. Очки нельзя купить или вывести.", reply_markup: { inline_keyboard: [[{ text: "🎮 Открыть игры", callback_data: "arcade:menu" }]] } });
         }
       }
     }
@@ -108,6 +108,10 @@ async function configureTelegramWebhook() {
     const base = process.env.RENDER_EXTERNAL_URL.endsWith("/") ? process.env.RENDER_EXTERNAL_URL.slice(0, -1) : process.env.RENDER_EXTERNAL_URL;
     const url = base + "/telegram/webhook/" + WEBHOOK_SECRET;
     await telegram("setWebhook", { url, secret_token: WEBHOOK_SECRET, allowed_updates: ["message", "callback_query"] });
+    await telegram("setMyCommands", { commands: [
+      { command: "start", description: "Открыть LIFE MONEY" },
+      { command: "games", description: "Игры 🏀 🎰 🎲" }
+    ] });
     console.log("Telegram webhook configured");
   } catch (error) {
     console.error("Telegram webhook setup failed:", error.message);
