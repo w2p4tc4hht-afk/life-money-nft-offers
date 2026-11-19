@@ -383,14 +383,14 @@ app.post("/api/miniapp/solo", miniAuth, (req,res) => {
     return res.json({ok:true,result:"🎲 Выпало число "+rolled+(reward?" — ты угадал!":" — не угадал, попробуй ещё."),rolled,reward,balance:currentBalance(id)});
   }
   if(mode==="slots") {
-    const symbols=["7","🍒","🍋","💎","⭐"];
+    const bet=Number(req.body?.bet);
+    if(![1,5,10,20].includes(bet)) return res.status(400).json({error:"Выбери ставку 1, 5, 10 или 20 LM."});
+    if(currentBalance(id)<bet) return res.status(400).json({error:"Недостаточно LM для этой ставки."});
+    const symbols=[{v:"7️⃣",m:60},{v:"💎",m:25},{v:"⭐",m:12},{v:"🍇",m:8},{v:"🍒",m:5}];
     const reels=Array.from({length:3},()=>symbols[crypto.randomInt(symbols.length)]);
-    const jackpot=reels.every(x=>x==="7");
-    const triple=!jackpot&&reels[0]===reels[1]&&reels[1]===reels[2];
-    const pair=!triple&&new Set(reels).size===2;
-    const reward=jackpot?500:(triple?30:(pair?5:0));
-    miniBalances.set(id,currentBalance(id)+reward);
-    return res.json({ok:true,result:reels.join("  "),jackpot,reward,balance:currentBalance(id)});
+    const win=reels.every(x=>x.v===reels[0].v), multiplier=win?reels[0].m:0, payout=bet*multiplier;
+    miniBalances.set(id,currentBalance(id)-bet+payout);
+    return res.json({ok:true,reels:reels.map(x=>x.v),win,jackpot:win&&reels[0].v==="7️⃣",multiplier,payout,bet,balance:currentBalance(id)});
   }
   return res.status(400).json({error:"Неизвестный режим."});
 });
