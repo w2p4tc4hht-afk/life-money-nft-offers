@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
 const { checkSessionStore } = require("./lib/session-store");
+const { sendMenu: sendArcadeMenu, handleCallback: handleArcadeCallback } = require("./lib/arcade");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,6 +54,9 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
     const update = req.body || {};
     if (update.message && typeof update.message.text === "string") {
       const pieces = update.message.text.trim().split(" ");
+      if (pieces[0] === "/games" || pieces[0] === "/game") {
+        await sendArcadeMenu(telegram, update.message.chat.id, update.message.from);
+      }
       if (pieces[0] === "/start") {
         const chatId = update.message.chat.id;
         const id = (pieces[1] || "").split("_")[0];
@@ -67,6 +71,7 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
     }
     if (update.callback_query) {
       const q = update.callback_query;
+      if (await handleArcadeCallback({ telegram, query: q })) return;
       const parts = String(q.data || "").split(":");
       const decision = parts[0], id = parts[1];
       const offer = expireIfNeeded(offers.get(id));
