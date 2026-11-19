@@ -58,7 +58,7 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
         await sendArcadeMenu(telegram, update.message.chat.id, update.message.from);
       }
       if (pieces[0] === "/app") {
-        const appUrl = String(process.env.RENDER_EXTERNAL_URL || "https://life-money-nft-offers.onrender.com").replace(/\\/$/, "");
+        const appUrl = String(process.env.RENDER_EXTERNAL_URL || "https://life-money-nft-offers.onrender.com").replace(/\/$/, "");
         await telegram("sendMessage", {
           chat_id: update.message.chat.id,
           text: "Открой LIFE MONEY — приложение с играми и NFT-предложениями.",
@@ -80,7 +80,7 @@ app.post("/telegram/webhook/" + WEBHOOK_SECRET, async (req, res) => {
             if (offer && offer.status === "active") await sendOfferToChat(chatId, offer);
             else await telegram("sendMessage", { chat_id: chatId, text: "Предложение не найдено или срок его действия истёк." });
           } else {
-          const appUrl = String(process.env.RENDER_EXTERNAL_URL || "https://life-money-nft-offers.onrender.com").replace(/\\/$/, "");
+          const appUrl = String(process.env.RENDER_EXTERNAL_URL || "https://life-money-nft-offers.onrender.com").replace(/\/$/, "");
           await telegram("sendMessage", {
             chat_id: chatId,
             text: "🌸 Добро пожаловать в LIFE MONEY!\\n\\nОткрой приложение: NFT-предложения, мини-игры и профиль — в одном красивом интерфейсе.\\n\\nИгровые очки демонстрационные, без реальных денег.",
