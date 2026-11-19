@@ -6,6 +6,7 @@ const { checkSessionStore } = require("./lib/session-store");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const offers = new Map();
+const { startNewsPublisher, getNewsPublisherStatus } = require("./lib/news-publisher");
 
 app.use(express.json({ limit: "100kb" }));
 
@@ -284,7 +285,11 @@ app.post("/api/mtproto/personal-offer/:id/decision", async (req, res) => {
 
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, app: "LIFE MONEY NFT Offers", version: "1.1.0" });
+  res.json({ ok: true, app: "LIFE MONEY NFT Offers", version: "1.2.0", news: getNewsPublisherStatus() });
+});
+
+app.get("/news/status", (_req, res) => {
+  res.json(getNewsPublisherStatus());
 });
 
 app.get("/health/session-store", async (_req, res) => {
@@ -373,4 +378,8 @@ app.get("*", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, () => { console.log(`LIFE MONEY NFT Offers listening on ${PORT}`); configureTelegramWebhook(); });
+app.listen(PORT, () => {
+  console.log(`LIFE MONEY NFT Offers listening on ${PORT}`);
+  configureTelegramWebhook();
+  startNewsPublisher({ telegram, channel: process.env.NEWS_CHANNEL || "@koszakNEW" });
+});
